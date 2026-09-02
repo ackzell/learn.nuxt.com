@@ -2,6 +2,7 @@ import type { ComputedRef, Ref } from 'vue'
 import type { ParsedEcInfo } from './useEcParser'
 import { computed, h, nextTick, ref, render } from 'vue'
 import ProsePreCollapseWidget from '~/components/content/ProsePreCollapseWidget.vue'
+import { highlightPalette } from '~/configs/ecHighlight'
 
 export function useEcDecorations(
   preEl: Ref<HTMLElement | undefined>,
@@ -16,7 +17,48 @@ export function useEcDecorations(
     return (v === 'before' || v === 'after' || v === 'top' || v === 'bottom') ? v : 'after'
   })
 
+  let hoverAttached = false
+
+  function setActiveAnnotation(code: HTMLElement, annKey: string | null) {
+    code.querySelectorAll('[data-ec-ann]').forEach((el) => {
+      if (annKey == null) {
+        el.classList.remove('is-ec-active')
+      }
+      else {
+        el.classList.toggle('is-ec-active', el.getAttribute('data-ec-ann') === annKey)
+      }
+    })
+  }
+
+  function setActiveHighlight(code: HTMLElement, hlGroup: string | null) {
+    code.querySelectorAll('.ec-highlight').forEach((el) => {
+      if (hlGroup == null) {
+        el.classList.remove('is-hl-active')
+      }
+      else {
+        el.classList.toggle('is-hl-active', el.getAttribute('data-ec-hl-group') === hlGroup)
+      }
+    })
+  }
+
+  function handleHover(event: MouseEvent) {
+    const pre = preEl.value
+    if (!pre)
+      return
+    const code = pre.querySelector('code')
+    if (!code)
+      return
+    const target = event.target as Element
+    const annGroup = target?.closest?.('[data-ec-ann]')
+    setActiveAnnotation(code as HTMLElement, annGroup ? annGroup.getAttribute('data-ec-ann') : null)
+    const hlMark = target?.closest?.('.ec-highlight')
+    setActiveHighlight(code as HTMLElement, hlMark ? hlMark.getAttribute('data-ec-hl-group') : null)
+  }
+
   function cleanupDecorations(codeEl: HTMLElement) {
+    setActiveAnnotation(codeEl, null)
+    setActiveHighlight(codeEl, null)
+
     codeEl.querySelectorAll('.ec-collapse-range').forEach((el) => {
       while (el.firstChild) el.parentNode?.insertBefore(el.firstChild, el)
       el.remove()
@@ -30,6 +72,7 @@ export function useEcDecorations(
     codeEl.querySelectorAll<HTMLElement>('.line').forEach((line) => {
       line.classList.remove('ec-collapsed', 'ec-annotated', 'ec-annotation-inline')
       line.removeAttribute('data-ec-note')
+      line.removeAttribute('data-ec-ann')
       line.removeAttribute('title')
 
       // Remove existing marks and restore text
@@ -77,6 +120,41 @@ export function useEcDecorations(
     return content
   }
 
+  function assignHighlightGroups(codeEl: HTMLElement) {
+    const highlights = parsedEc.value.highlights
+    const paletteCount = highlightPalette.length
+
+    // Dedupe identical patterns: every occurrence of the same /pattern/ should
+    // share one hover group and one color, and shouldn't consume extra palette
+    // slots. Preserve first-seen order.
+    const uniquePatterns: string[] = []
+    for (const hl of highlights) {
+      if (hl && !uniquePatterns.includes(hl.pattern))
+        uniquePatterns.push(hl.pattern)
+    }
+
+    const marks = codeEl.querySelectorAll<HTMLElement>('.ec-highlight')
+    marks.forEach((mark) => {
+      const text = mark.textContent || ''
+      if (!text)
+        return
+      for (let i = 0; i < uniquePatterns.length; i++) {
+        const pattern = uniquePatterns[i]
+        try {
+          const regex = new RegExp(`^(?:${pattern})$`)
+          if (regex.test(text)) {
+            mark.setAttribute('data-ec-hl-group', String(i))
+            mark.setAttribute('data-ec-hl-color', String(i % paletteCount))
+            return
+          }
+        }
+        catch {
+          continue
+        }
+      }
+    })
+  }
+
   function applyEcDecorations() {
     const pre = preEl.value
     if (!pre || typeof window === 'undefined')
@@ -85,6 +163,12 @@ export function useEcDecorations(
     if (!code)
       return
     const codeEl = code as HTMLElement
+
+    if (!hoverAttached && typeof window !== 'undefined') {
+      pre.addEventListener('mouseover', handleHover)
+      pre.addEventListener('mouseout', handleHover)
+      hoverAttached = true
+    }
 
     cleanupDecorations(codeEl)
 
@@ -142,7 +226,8 @@ export function useEcDecorations(
     })
 
     // 2. Annotation logic
-    parsedEc.value.annotations.forEach((anno) => {
+    parsedEc.value.annotations.forEach((anno, annIndex) => {
+      const annKey = String(annIndex)
       const start = Math.min(...anno.lines); const end = Math.max(...anno.lines)
       let firstLineEl: HTMLElement | undefined
 
@@ -150,6 +235,7 @@ export function useEcDecorations(
         const l = lineMap.get(i)
         if (l) {
           l.classList.add('ec-annotated')
+          l.setAttribute('data-ec-ann', annKey)
           ensureAnnotatedContent(l)
           if (!firstLineEl && i === start)
             firstLineEl = l
@@ -170,10 +256,14 @@ export function useEcDecorations(
         }
         else {
           const row = document.createElement('div'); row.className = 'ec-annotation-row'; row.textContent = anno.text
+          row.setAttribute('data-ec-ann', annKey)
           anchor.insertAdjacentElement(annotationPlacement.value === 'before' ? 'beforebegin' : 'afterend', row)
         }
       }
     })
+
+    // 3. Assign per-pattern highlight groups
+    assignHighlightGroups(codeEl)
   }
 
   return {

@@ -279,15 +279,26 @@ pre {
   --ec-ann-inline-opacity: 0.3;
   --ec-ann-hl-border: 40%;
   --ec-ann-hl-bg: 10%;
+
+  /* Per-pattern /pattern/ highlight palette (see configs/ecHighlight.ts) */
+  --ec-hl-tip: var(--colors-tip-500);
+  --ec-hl-info: var(--colors-info-500);
+  --ec-hl-challenge: var(--colors-challenge-500);
 }
 
-.group\/avPre:hover {
+/* Per-annotation hover: hovering a note row OR any of its code lines
+   brightens only that annotation (line tint + border bar + note + its
+   /pattern/ highlights). Other annotations stay subtle at rest. */
+:deep(code .line[data-ec-ann].is-ec-active) {
   --ec-ann-bg: 25%;
   --ec-ann-border: 60%;
-  --ec-ann-row: 60%;
   --ec-ann-inline-opacity: 0.75;
   --ec-ann-hl-border: 100%;
   --ec-ann-hl-bg: 15%;
+}
+
+:deep(code .ec-annotation-row.is-ec-active) {
+  --ec-ann-row: 60%;
 }
 
 :deep(code .line.ec-annotated) {
@@ -378,5 +389,29 @@ pre {
   transition:
     border 0.2s ease,
     background-color 0.2s ease;
+}
+
+/* Per-pattern highlight color variants. Each /pattern/ in a fence is assigned
+   a data-ec-hl-color index (0=tip, 1=info, 2=challenge) by useEcDecorations. */
+:deep(.ec-highlight[data-ec-hl-color="0"]) {
+  border: 1px solid color-mix(in oklab, var(--ec-hl-tip) var(--ec-ann-hl-border), transparent);
+  background-color: color-mix(in oklab, var(--ec-hl-tip) var(--ec-ann-hl-bg), transparent);
+}
+
+:deep(.ec-highlight[data-ec-hl-color="1"]) {
+  border: 1px solid color-mix(in oklab, var(--ec-hl-info) var(--ec-ann-hl-border), transparent);
+  background-color: color-mix(in oklab, var(--ec-hl-info) var(--ec-ann-hl-bg), transparent);
+}
+
+:deep(.ec-highlight[data-ec-hl-color="2"]) {
+  border: 1px solid color-mix(in oklab, var(--ec-hl-challenge) var(--ec-ann-hl-border), transparent);
+  background-color: color-mix(in oklab, var(--ec-hl-challenge) var(--ec-ann-hl-bg), transparent);
+}
+
+/* Highlight hover: hovering a mark brightens same-pattern marks (grouped by
+   data-ec-hl-group, the unique pattern id) regardless of shared color. */
+:deep(.ec-highlight.is-hl-active) {
+  --ec-ann-hl-border: 100%;
+  --ec-ann-hl-bg: 20%;
 }
 </style>

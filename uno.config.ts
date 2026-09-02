@@ -82,6 +82,15 @@ export default defineConfig({
     'text-primary-dark-300',
 
     'text-primary-700',
+    'text-primary-500',
+    'text-primary-dark-500',
+
+    // Ensure the UnoCSS theme color CSS vars are emitted for use by the
+    // /pattern/ highlight palette vars in ProsePre.vue (--colors-tip-500,
+    // --colors-info-500, --colors-challenge-500).
+    'bg-tip-500',
+    'bg-info-500',
+    'bg-challenge-500',
   ],
   theme: {
     colors: {
