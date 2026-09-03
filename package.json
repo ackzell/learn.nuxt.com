@@ -64,7 +64,6 @@
     "theme-vitesse": "catalog:frontend",
     "twoslash-vue": "catalog:frontend",
     "vscode-uri": "catalog:frontend",
-    "vue": "catalog:frontend",
     "vue-router": "catalog:frontend"
   },
   "devDependencies": {
@@ -92,6 +91,7 @@
     "@unocss/eslint-plugin": "catalog:dev",
     "@unocss/extractor-mdc": "catalog:nuxt",
     "@unocss/nuxt": "catalog:nuxt",
+    "@vue/test-utils": "^2.5.0",
     "@vueuse/nuxt": "catalog:nuxt",
     "better-sqlite3": "catalog:dev",
     "commit-and-tag-version": "catalog:dev",
@@ -100,6 +100,7 @@
     "eslint-plugin-format": "catalog:dev",
     "execa": "catalog:dev",
     "fast-glob": "catalog:dev",
+    "happy-dom": "^18.0.1",
     "nuxi": "catalog:nuxt",
     "nuxt": "catalog:nuxt",
     "pinia": "catalog:nuxt",
@@ -107,6 +108,7 @@
     "typescript": "catalog:dev",
     "unocss-preset-animations": "catalog:dev",
     "v-code-diff": "catalog:frontend",
+    "vue": "^3.5.41",
     "vue-tsc": "catalog:dev",
     "wrangler": "catalog:dev"
   }

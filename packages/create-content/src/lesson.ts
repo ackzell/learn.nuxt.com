@@ -1,8 +1,10 @@
 import type { Locale } from './utils'
 import {
   copyDir,
+  generateChallengeIndexTs,
   generateIndexTs,
   getChaptersFlat,
+  getChallengeIndexMd,
   getContentDir,
   getLessonIndexMd,
   getLessons,
@@ -13,6 +15,7 @@ import {
 
   padNumber,
   slugify,
+  writeChallengeSuite,
 } from './utils'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -31,6 +34,7 @@ export interface LessonOptions {
   chapterDir?: string
   title?: string
   template?: string
+  isChallenge?: boolean
 }
 
 export async function createLesson(options?: LessonOptions) {
@@ -115,6 +119,13 @@ export async function createLesson(options?: LessonOptions) {
   if (isCancel(template))
     return
 
+  const isChallenge = options?.isChallenge ?? await confirm({
+    message: 'Make this a checkable challenge (with validation)?',
+    initialValue: false,
+  })
+  if (isCancel(isChallenge))
+    return
+
   const slug = slugify(title)
   const dirName = `${padNumber(num)}.${slug}`
   const lessonDir = join(getContentDir(), resolvedLocale, chapter, dirName)
@@ -124,11 +135,19 @@ export async function createLesson(options?: LessonOptions) {
   s.start('Creating lesson...')
 
   mkdirSync(join(lessonDir), { recursive: true })
-  writeFileSync(join(lessonDir, 'index.md'), getLessonIndexMd(title))
+  writeFileSync(
+    join(lessonDir, 'index.md'),
+    isChallenge ? getChallengeIndexMd(title) : getLessonIndexMd(title),
+  )
 
   const templateDir = join(lessonDir, '.template')
   mkdirSync(templateDir, { recursive: true })
-  writeFileSync(join(templateDir, 'index.ts'), generateIndexTs(template, sessionName))
+  writeFileSync(
+    join(templateDir, 'index.ts'),
+    isChallenge
+      ? generateChallengeIndexTs(template, sessionName)
+      : generateIndexTs(template, sessionName),
+  )
 
   if (template !== 'none') {
     const stubFile = getStubFileName(template)
@@ -136,6 +155,9 @@ export async function createLesson(options?: LessonOptions) {
     mkdirSync(dirname(stubPath), { recursive: true })
     writeFileSync(stubPath, getStubContent(template))
   }
+
+  if (isChallenge)
+    writeChallengeSuite(lessonDir, template)
 
   s.stop(`Created lesson: ${resolvedLocale}/${chapter}/${dirName}/`)
 

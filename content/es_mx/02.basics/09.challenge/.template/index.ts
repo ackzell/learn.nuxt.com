@@ -10,4 +10,7 @@ export const meta: GuideMeta = {
   template: 'html',
   ignoredFiles: ['package.json', 'main.js', 'style.css', 'server.js'],
   sessionName: 'basics-challenge',
+  validation: {
+    file: '/__challenge__/suite.js',
+  },
 }

@@ -1,25 +1,36 @@
-<div id="myApp">
-  <p>{{ message }}</p>
-  Current Version is: <code>{{ version }}</code>
-</div>
-
-<script type="importmap">
-  {
-    "imports": {
-      "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
-    }
-  }
-</script>
-
-<script type="module">
-  import { createApp, ref, version } from 'vue'
-
-  createApp({
-    setup() {
-      const message = ref('Hola Vue!')
-      return {
-        message,
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <script type="importmap">
+      {
+        "imports": {
+          "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+        }
       }
-    },
-  }).mount('#app')
-</script>
+    </script>
+  </head>
+  <body>
+    <div id="myApp">
+      <p>{{ message }}</p>
+      Current Version is: <code>{{ version }}</code>
+    </div>
+
+    <script type="module">
+      import { createApp, ref } from 'vue'
+
+      createApp({
+        setup() {
+          const message = ref('Hola Vue!')
+          return {
+            message,
+          }
+        },
+      }).mount('#app')
+    </script>
+
+    <!-- Start the challenge validation runtime (registers run-suite listener). -->
+    <script type="module" src="/__challenge__/harness.js"></script>
+    <script type="module" src="/__challenge__/suite.js"></script>
+  </body>
+</html>

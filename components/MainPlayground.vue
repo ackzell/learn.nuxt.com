@@ -434,29 +434,38 @@ function onEmbeddedResizeEnd(details: { size: number[] }) {
   <!-- Mobile: single panel view, toggled via MobilePanelToggle -->
   <template v-if="isMobile">
     <div h-full relative of-hidden>
-      <Transition :name="slideDirection === 'forward' ? 'mobile-slide-left' : 'mobile-slide-right'">
-        <div v-if="!isCodeOnlyMode" key="docs-pane" h-full>
-          <PanelDocs :key="route.path" />
+      <!-- Code dock stays mounted even while the docs pane is shown (just hidden
+           with `visibility`, not `display:none`) so the preview iframe keeps
+           running and challenge DOM validation can inspect it from the docs view. -->
+      <div
+        key="code-pane"
+        h-full grid="~ rows-[max-content_1fr]"
+        :class="isCodeOnlyMode ? 'visible' : 'invisible'"
+      >
+        <PanelCodeToolbar />
+        <div min-h-0 relative of-hidden>
+          <PlaygroundCodeDockNode
+            :node="visibleLayout"
+            :dragged-panel-id="draggedPanelId"
+            :active-drop-zone="activeDropZone"
+            :sizes-map="codeSizesMap"
+            :show-preview="ui.showPreview"
+            :show-console="ui.showConsole"
+            :show-terminal="ui.showTerminal"
+            @drag-start="onDragStart"
+            @drag-end="onDragEnd"
+            @drop-zone-enter="onDropZoneEnter"
+            @drop-zone-leave="onDropZoneLeave"
+            @zone-drop="onZoneDrop"
+            @split-resize="onCodeSplitResize"
+          />
         </div>
-        <div v-else key="code-pane" h-full grid="~ rows-[max-content_1fr]">
-          <PanelCodeToolbar />
-          <div min-h-0 relative of-hidden>
-            <PlaygroundCodeDockNode
-              :node="visibleLayout"
-              :dragged-panel-id="draggedPanelId"
-              :active-drop-zone="activeDropZone"
-              :sizes-map="codeSizesMap"
-              :show-preview="ui.showPreview"
-              :show-console="ui.showConsole"
-              :show-terminal="ui.showTerminal"
-              @drag-start="onDragStart"
-              @drag-end="onDragEnd"
-              @drop-zone-enter="onDropZoneEnter"
-              @drop-zone-leave="onDropZoneLeave"
-              @zone-drop="onZoneDrop"
-              @split-resize="onCodeSplitResize"
-            />
-          </div>
+      </div>
+
+      <!-- Docs slides over the hidden code dock when active -->
+      <Transition :name="slideDirection === 'forward' ? 'mobile-slide-left' : 'mobile-slide-right'">
+        <div v-if="!isCodeOnlyMode" key="docs-pane" absolute inset-0 h-full>
+          <PanelDocs :key="route.path" />
         </div>
       </Transition>
     </div>

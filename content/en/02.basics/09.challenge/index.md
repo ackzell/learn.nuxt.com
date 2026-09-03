@@ -25,3 +25,4 @@ Current Version is: 3.5.22
 ```
 
 Note that the actual version might change as new versions of Vue are released since I wrote this.
+ 

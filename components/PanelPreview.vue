@@ -18,7 +18,17 @@ const PanelPreviewClient = defineAsyncComponent({
 })
 
 const inputUrl = ref<string>('')
-const inner = ref<{ iframe?: HTMLIFrameElement | undefined }>()
+const inner = ref<{
+  iframe?: HTMLIFrameElement | undefined
+  cancelPendingSuites?: () => void
+  markChallengeNotReady?: () => void
+}>()
+
+const hasChallenge = computed(() => !!guide.currentGuide?.validation?.file)
+
+// Shared validation state/composable — drives both the challenge widget and
+// this toolbar button so they report identical results.
+const { computing: challengeRunning, runValidation: runChallengeTests } = useChallengeValidation()
 
 // auto update inputUrl when location value changed
 syncRef(
@@ -28,12 +38,17 @@ syncRef(
 )
 
 function refreshIframe(force = false) {
+  inner.value?.cancelPendingSuites?.()
   preview.updateUrl()
   if (preview.url && inner.value?.iframe) {
     if (force || inner.value.iframe.src !== preview.url) {
       const colorMode = useColorMode()
       const url = new URL(preview.url)
       url.searchParams.set('dark', colorMode.value === 'dark' ? 'true' : 'false')
+      const challengeFile = guide.currentGuide?.validation?.file
+      if (challengeFile)
+        url.searchParams.set('challenge', challengeFile)
+      inner.value.markChallengeNotReady?.()
       inner.value.iframe.src = url.toString()
     }
     inputUrl.value = preview.location.fullPath
@@ -100,6 +115,16 @@ watch(
         @click="refreshIframe(true)"
       >
         <div i-carbon-rotate-360 text-sm />
+      </IconButton>
+      <IconButton
+        v-if="hasChallenge"
+        tooltip="Run Challenge Tests"
+        tooltip-placement="bottom"
+        padding="sm"
+        :disabled="challengeRunning"
+        @click="runChallengeTests"
+      >
+        <div i-carbon-checklist text-sm />
       </IconButton>
       <ClientOnly>
         <VDropdown :distance="6">

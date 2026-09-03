@@ -24,6 +24,8 @@ allowBuilds:
 catalog:
   '@clack/prompts': ^1.6.0
   '@types/node': ^22.20.0
+  '@vue/test-utils': ^2.5.0
+  happy-dom: ^18.0.1
   kolorist: ^1.8.0
   vitest: ^3.2.6
 catalogs:

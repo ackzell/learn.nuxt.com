@@ -23,6 +23,89 @@ const functions: ParentFunctions = {
 
 let rpc: any = null
 
+// Suite validation runs: resolved/awaited by useChallengeValidation.
+// Keyed by request id so concurrent or stale responses can't resolve the
+// wrong pending call.
+const suiteHandlers = new Map<string, { resolve: (payload: any) => void, timer?: ReturnType<typeof setTimeout> }>()
+const challengeReadyWaiters = new Set<(ready: boolean) => void>()
+let challengeReady = false
+let challengeGeneration = 0
+let suiteRequestSeq = 0
+
+function nextRequestId(): string {
+  suiteRequestSeq += 1
+  return `${Date.now()}-${suiteRequestSeq}`
+}
+
+/**
+ * Runs the in-iframe challenge suite and resolves with its result via the
+ * harness's postMessage bridge (`nuxt-playground-challenge`). A unique request
+ * id is sent and echoed back so the correct handler resolves even if suites
+ * overlap or a stale reply arrives late.
+ */
+async function runSuite(file: string, timeoutMs = 15_000): Promise<any> {
+  const fail = (message: string) => ({
+    success: false,
+    empty: true,
+    passed: false,
+    tests: [{ name: 'suite', passed: false, message }],
+  })
+  const frame = iframe.value?.contentWindow
+  if (!frame)
+    return fail('Preview is not ready yet.')
+  if (!challengeReady) {
+    const generation = challengeGeneration
+    const ready = await new Promise<boolean>((resolve) => {
+      let pingTimer: ReturnType<typeof setInterval> | undefined
+      let timeoutTimer: ReturnType<typeof setTimeout> | undefined
+      const onReady = (ready: boolean) => {
+        challengeReadyWaiters.delete(onReady)
+        if (pingTimer)
+          clearInterval(pingTimer)
+        if (timeoutTimer)
+          clearTimeout(timeoutTimer)
+        resolve(ready)
+      }
+      challengeReadyWaiters.add(onReady)
+      const ping = () => frame.postMessage({
+        source: 'nuxt-playground-parent-challenge',
+        payload: { method: 'challenge-ping' },
+      }, '*')
+      ping()
+      pingTimer = setInterval(ping, 100)
+      timeoutTimer = setTimeout(() => onReady(false), Math.min(timeoutMs, 1500))
+    })
+    if (generation !== challengeGeneration || iframe.value?.contentWindow !== frame)
+      return fail('Preview challenge runtime is not ready yet.')
+    // Older mounted harnesses do not support the readiness handshake. Fall
+    // back to the original request protocol after the short grace period.
+    if (!ready)
+      challengeReady = true
+  }
+
+  return new Promise((resolve) => {
+    const id = nextRequestId()
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const entry: { resolve: (payload: any) => void, timer?: ReturnType<typeof setTimeout> } = {
+      resolve: (payload) => {
+        if (timer)
+          clearTimeout(timer)
+        resolve(payload)
+      },
+    }
+    suiteHandlers.set(id, entry)
+    timer = setTimeout(() => {
+      suiteHandlers.delete(id)
+      entry.resolve(fail('Timed out running the challenge suite.'))
+    }, timeoutMs)
+    entry.timer = timer
+    frame.postMessage({
+      source: 'nuxt-playground-parent-challenge',
+      payload: { method: 'run-suite', file, id },
+    }, '*')
+  })
+}
+
 onMounted(() => {
   rpc = createBirpc<FrameFunctions, ParentFunctions>(functions, {
     eventNames: ['onColorModeChange'],
@@ -49,14 +132,53 @@ onMounted(() => {
     },
   })
 
+  // Expose the preview iframe's live document so challenge validation can
+  // inspect rendered DOM (see composables/useChallengeValidation.ts).
+  ;(window as any).__getPreviewDocument = () => iframe.value?.contentDocument ?? null
+
   window.addEventListener('message', handleConsoleMessage)
   window.addEventListener('message', handleColorModeRequest)
+  window.addEventListener('message', handleSuiteMessage)
+  ;(window as any).__runChallengeSuite = runSuite
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('message', handleConsoleMessage)
   window.removeEventListener('message', handleColorModeRequest)
+  window.removeEventListener('message', handleSuiteMessage)
+  if ((window as any).__getPreviewDocument)
+    delete (window as any).__getPreviewDocument
+  if ((window as any).__runChallengeSuite)
+    delete (window as any).__runChallengeSuite
 })
+
+function handleSuiteMessage(event: MessageEvent) {
+  // Only accept replies from the preview iframe's own window so spoofed
+  // messages from other frames can't resolve a pending suite.
+  if (event.source !== iframe.value?.contentWindow)
+    return
+  if (typeof event.data !== 'object')
+    return
+  if (event.data.source !== 'nuxt-playground-challenge')
+    return
+  const { payload } = event.data
+  if (payload?.method === 'challenge-ready') {
+    challengeReady = true
+    for (const resolve of challengeReadyWaiters)
+      resolve(true)
+    challengeReadyWaiters.clear()
+    return
+  }
+  if (!payload || payload.method !== 'suite-result')
+    return
+  if (typeof payload.id !== 'string')
+    return
+  const handler = suiteHandlers.get(payload.id)
+  if (!handler)
+    return // stale/unknown request id — ignore
+  suiteHandlers.delete(payload.id)
+  handler.resolve(payload)
+}
 
 function handleConsoleMessage(event: MessageEvent) {
   if (event.source !== iframe.value?.contentWindow)
@@ -89,6 +211,34 @@ function syncColorMode() {
     source: 'nuxt-playground-color-mode',
     mode: colorMode.value,
   }, '*')
+}
+
+/**
+ * Resolve every in-flight suite validation as "cancelled" so callers get an
+ * immediate response instead of hanging for 15 s after an iframe refresh.
+ */
+function cancelPendingSuites() {
+  for (const resolve of challengeReadyWaiters)
+    resolve(false)
+  challengeReadyWaiters.clear()
+  for (const [id, entry] of suiteHandlers) {
+    clearTimeout(entry.timer)
+    entry.resolve({
+      id,
+      method: 'suite-result',
+      success: false,
+      empty: true,
+      passed: false,
+      cancelled: true,
+      tests: [{ name: 'suite', passed: false, message: 'Validation cancelled — preview was refreshed.' }],
+    })
+  }
+  suiteHandlers.clear()
+}
+
+function markChallengeNotReady() {
+  challengeReady = false
+  challengeGeneration += 1
 }
 
 /**
@@ -136,6 +286,8 @@ watch(
 
 defineExpose({
   iframe,
+  cancelPendingSuites,
+  markChallengeNotReady,
 })
 </script>
 

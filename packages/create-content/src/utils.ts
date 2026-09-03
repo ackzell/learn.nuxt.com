@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import process from 'node:process'
 
@@ -215,6 +215,118 @@ ogImage: true
 `
 }
 
+export function getChallengeIndexMd(title: string): string {
+  return `---
+title: "${title}"
+ogImage: true
+isChallenge: true
+---
+`
+}
+
+/**
+ * GuideMeta scaffold for a checkable challenge lesson. The lesson author is
+ * expected to fill in their own `__challenge__/suite.ts` guards that match the
+ * buggy starter files they write (see `writeChallengeSuite`).
+ */
+export function generateChallengeIndexTs(template: string, sessionName: string): string {
+  // Static HTML challenges are authored in JavaScript (`suite.js`) because the
+  // browser cannot natively import TypeScript without a build step; Vue
+  // challenges stay TypeScript (`suite.ts`) since they run under Vite.
+  const isHtml = template === 'html'
+  const templateField = isHtml
+    ? `  template: 'html',
+  startingFile: 'index.html',
+  features: {
+    defaultLayout: 'split',
+    terminal: false,
+    fileTree: false,
+  },
+  ignoredFiles: ['package.json', 'main.js', 'style.css', 'server.js'],
+`
+    : `  template: '${template}',
+  startingFile: 'src/App.vue',
+  features: {
+    defaultLayout: 'split',
+    terminal: true,
+    console: true,
+  },
+  ignoredFiles: ['package.json', 'main.js', 'tsconfig.node.json', 'vite.config.ts', 'App.vue', 'index.html', 'src/main.ts'],
+`
+
+  return `import type { GuideMeta } from '~/types/guides'
+
+export const meta: GuideMeta = {
+${templateField}  sessionName: '${sessionName}',
+  validation: {
+    file: '/__challenge__/suite.${isHtml ? 'js' : 'ts'}',
+  },
+}
+`
+}
+
+/**
+ * Skeleton for a challenge's `__challenge__/suite.*`. The author fills in the
+ * checks — they may use `ctx.doc` (live document) and, for Vue templates,
+ * `ctx.mount` (Vue Test Utils).
+ *
+ * Static HTML challenges are authored in JavaScript (`suite.js`) because the
+ * browser cannot natively import TypeScript without a build step; Vue
+ * challenges stay TypeScript (`.suite.ts`) since they run under Vite. The HTML
+ * skeleton ships an explicit TODO-failing check so a fresh challenge never
+ * silently passes an empty suite.
+ */
+export function writeChallengeSuite(dir: string, template = 'html'): void {
+  const isHtml = template === 'html'
+  const ext = isHtml ? 'js' : 'ts'
+  const file = join(dir, '.template', 'files', '__challenge__', `suite.${ext}`)
+
+  const content = isHtml
+    ? `import { check, checks, expect } from './harness.js'
+
+export default checks([
+// Replace the TODO below with your checks. Use ctx.doc to inspect the live
+// document (no Vue Test Utils for static HTML). Example:
+//
+// check('Shows a greeting', {
+//   run({ doc }) {
+//     expect(doc.querySelector('h1')?.textContent).toContain('Hello')
+//   },
+// }),
+
+// Explicit failing check so this empty scaffold never passes the suite.
+check('TODO: write a real check', {
+  run({ doc }) {
+    expect(doc.querySelector('h1')?.textContent).toBeTruthy()
+  },
+}),
+])
+`
+    : `import { check, checks, expect } from './harness'
+
+export default checks([
+// Replace the TODO below with your checks. Use ctx.doc to inspect the live
+// DOM and ctx.mount to mount Vue components with Vue Test Utils. Example:
+//
+// check('Shows a greeting', {
+//   run({ doc, mount }) {
+//     expect(doc.querySelector('h1')?.textContent).toContain('Hello')
+//   },
+// }),
+
+// Explicit failing check so this empty scaffold never passes the suite.
+check('TODO: write a real check', {
+  run({ doc }) {
+    expect(doc.querySelector('h1')?.textContent).toBeTruthy()
+  },
+}),
+])
+`
+
+  mkdirSync(dirname(file), { recursive: true })
+  writeFileSync(file, content)
+}
+
 export function hasTemplateDir(lessonPath: string): boolean {
   return existsSync(join(lessonPath, '.template'))
 }
@@ -260,8 +372,8 @@ export function detectTemplateFromIndex(lessonPath: string): string {
   try {
     const content = readFileSync(indexPath, 'utf-8')
     const match = content.match(/template:\s*'([\w-]+)'/)
-    if (match && ['vue', 'html', 'vue-sass'].includes(match[1])) {
-      return match[1]
+    if (match && ['vue', 'html', 'vue-sass'].includes(match[1]!)) {
+      return match[1]!
     }
     return 'vue'
   }

@@ -37,3 +37,11 @@ declare module 'luna-console/luna-console.css' {}
 declare module '~/templates/console-interceptor' {
   export const CONSOLE_INTERCEPTOR_CODE: string
 }
+declare module 'virtual:guide-session-map' {
+  const map: Record<string, string>
+  export default map
+}
+declare module 'virtual:guide-meta-map' {
+  const map: Record<string, () => Promise<{ meta: import('./guides').GuideMeta }>>
+  export default map
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs'
+import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { mkdtempSync } from 'node:fs'
@@ -9,6 +9,7 @@ import {
   padNumber,
   parseDirNumber,
   generateIndexTs,
+  generateChallengeIndexTs,
   getStubFileName,
   getStubContent,
   getChapterIndexMd,
@@ -23,6 +24,7 @@ import {
   hasFilesDir,
   copyDir,
   countFiles,
+  writeChallengeSuite,
 } from '../src/utils.ts'
 
 describe('slugify', () => {
@@ -100,6 +102,22 @@ describe('generateIndexTs', () => {
     const result = generateIndexTs('vue-sass', 'sass-lesson')
     expect(result).toContain("template: 'vue-sass'")
     expect(result).toContain("sessionName: 'sass-lesson'")
+  })
+})
+
+describe('generateChallengeIndexTs', () => {
+  it('references a .js suite for static html', () => {
+    const result = generateChallengeIndexTs('html', 'my-challenge')
+    expect(result).toContain("template: 'html'")
+    expect(result).toContain("startingFile: 'index.html'")
+    expect(result).toContain("file: '/__challenge__/suite.js'")
+  })
+
+  it('references a .ts suite for vue templates', () => {
+    const result = generateChallengeIndexTs('vue', 'my-challenge')
+    expect(result).toContain("template: 'vue'")
+    expect(result).toContain("startingFile: 'src/App.vue'")
+    expect(result).toContain("file: '/__challenge__/suite.ts'")
   })
 })
 
@@ -319,6 +337,29 @@ describe('filesystem operations', () => {
 
     it('returns 0 for nonexistent directory', () => {
       expect(countFiles(join(tmpDir, 'no-exist'))).toBe(0)
+    })
+  })
+
+  describe('writeChallengeSuite', () => {
+    it('writes a .js suite with an explicit failing TODO for static html', () => {
+      const dir = join(tmpDir, 'challenge-html')
+      mkdirSync(dir, { recursive: true })
+      writeChallengeSuite(dir, 'html')
+      const file = join(dir, '.template', 'files', '__challenge__', 'suite.js')
+      const content = readFileSync(file, 'utf-8')
+      expect(content).toContain("from './harness.js'")
+      expect(content).toContain('TODO: write a real check')
+      expect(content).toContain('expect(doc.querySelector')
+    })
+
+    it('writes a .ts suite with ctx.mount for vue templates', () => {
+      const dir = join(tmpDir, 'challenge-vue')
+      mkdirSync(dir, { recursive: true })
+      writeChallengeSuite(dir, 'vue')
+      const file = join(dir, '.template', 'files', '__challenge__', 'suite.ts')
+      const content = readFileSync(file, 'utf-8')
+      expect(content).toContain("from './harness'")
+      expect(content).toContain('TODO: write a real check')
     })
   })
 })

@@ -1,9 +1,12 @@
 import type { ClientInfo, FrameFunctions, ParentFunctions } from '../../../types/rpc'
 import { createBirpc } from 'birpc'
 import { createApp } from 'vue'
+import { startChallengeRuntime } from '../__challenge__/harness'
 import App from './App.vue'
 
 const app = createApp(App)
+
+startChallengeRuntime('/__challenge__/suite.ts')
 
 // Initialize RPC bridge to communicate with parent frame (amoxtli-vue)
 const functions: FrameFunctions = {

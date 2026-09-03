@@ -1,5 +1,5 @@
 import type { ViteDevServer } from 'vite'
-import { utimesSync } from 'node:fs'
+import { readFileSync, utimesSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -291,6 +291,69 @@ export default defineNuxtModule({
         )
 
         return `const map = {\n${importLines.join(',\n')}\n};\nexport default map;\n`
+      },
+    })
+
+    // ── Virtual module: guide-session-map ──
+    // Maps normalized route path → sessionName for every lesson, so nav
+    // components can show challenge completion status without loading the
+    // full lesson metadata (which would be heavy). Mirrors guide-meta-map.
+    const sessionVirtualId = 'virtual:guide-session-map'
+    const sessionResolvedId = `\0${sessionVirtualId}`
+
+    addVitePlugin({
+      name: 'nuxt-playground:guide-session-map',
+      enforce: 'pre',
+
+      resolveId(id) {
+        if (id === sessionVirtualId)
+          return sessionResolvedId
+      },
+
+      async load(id) {
+        if (id !== sessionResolvedId)
+          return
+
+        const contentDir = join(process.cwd(), 'content')
+        const files = await fg(['**/.template/index.ts'], {
+          cwd: contentDir,
+          dot: true,
+          absolute: true,
+          onlyFiles: true,
+          ignore: ['**/node_modules/**'],
+        })
+
+        const entries = files
+          .sort()
+          .map((filePath) => {
+            const relativePath = relative(contentDir, filePath)
+            const routePath = `/${
+              relativePath
+                .replace(/\/\.template\/index\.ts$/, '')
+                .split('/')
+                .map(part => part.replace(/^\d+[a-z]*\./i, ''))
+                .join('/')
+            }`
+
+            // Extract `sessionName` from the GuideMeta using a non-executing
+            // regex so we don't need to import every lesson module at build time.
+            let sessionName = ''
+            try {
+              const source = readFileSync(filePath, 'utf-8')
+              const m = source.match(/sessionName\s*:\s*['"`]([^'"`]+)['"`]/)
+              if (m?.[1])
+                sessionName = m[1]
+            }
+            catch {}
+
+            return [routePath, sessionName]
+          })
+
+        const lines = entries.map(([route, session]) =>
+          `  ${JSON.stringify(route)}: ${JSON.stringify(session)}`,
+        )
+
+        return `export default {\n${lines.join(',\n')}\n};\n`
       },
     })
   },

@@ -1,3 +1,5 @@
+import type { ChallengeSuite } from '~/types/validation'
+
 export type StringOrRegExp = string | RegExp
 
 export interface GuideIgnoredFiles { overwrite: boolean, patterns: StringOrRegExp[] }
@@ -49,6 +51,14 @@ export interface GuideMeta {
 
   buttonSolutionMessage?: string
   buttonResetMessage?: string
+
+  /**
+   * Optional validation suite that turns this lesson into a checkable
+   * challenge. When present, a "Check my work" widget (`::challenge-check` /
+   * the `ChallengeCheck` component) is auto-injected at the end of the lesson
+   * at build time. Authors can also place it manually anywhere in the markdown.
+   */
+  validation?: ChallengeSuite
 
 }
 

@@ -14,6 +14,13 @@ color-mode:
 coming-soon: Próximamente
 reset-challenge: Reiniciar desafío
 show-solution: Mostrar solución
+challenge:
+  check-title: Revisa tu trabajo
+  check: Revisar mi trabajo
+  checking: Revisando…
+  pass: ¡Aprobado!
+  fail: Casi — revisa los detalles abajo
+  completed: Has completado este desafío
 search-dots: Buscar...
 steps:
   initializing-webcontainer: Inicializando WebContainer

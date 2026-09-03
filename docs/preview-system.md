@@ -315,6 +315,98 @@ When a `.template/files/` file changes in development:
 4. Since Vite is running inside the WebContainer, the preview auto-updates via Vite HMR
 5. The module also invalidates Vite's module graph and touches the sibling `.md` file to bust Nuxt Content cache
 
+## Challenge Validation Suites
+
+Checkable challenges declare a validation suite in their `.template/index.ts`:
+
+```ts
+export const meta: GuideMeta = {
+  template: 'html',      // or 'vue' / 'vue-sass'
+  validation: {
+    file: '/__challenge__/suite.js',  // .js for static html, .ts for vue
+  },
+}
+```
+
+Suites are authored with a **shared vocabulary** — `check()` / `checks()` / `expect()` —
+and are executed inside the WebContainer on the same origin as the preview iframe so
+they can assert against the live DOM:
+
+```ts
+import { check, checks, expect } from './harness.js'   // './harness' for Vue
+
+export default checks([
+  check('Renders the greeting', {
+    run({ doc }) {
+      expect(doc.querySelector('#app p')?.textContent).toContain('Hello')
+    },
+  }),
+])
+```
+
+### Shared authoring DSL
+
+- `expect(actual)` — matchers (`toBe`, `toEqual`, `toBeTruthy`, `toContain`,
+  `toMatch`, `toBeGreaterThan`, `not`, …). Throws a readable message on failure.
+- `check(name, spec)` / `checks([...])` — the preferred, explicit form. Returns a
+  suite whose `run(ctx)` produces the shared result shape.
+- `describe` / `it` / `test` — minimal, **corrected** shims for migrating existing
+  suites. The empty-suite rule applies here too.
+
+### Result shape & message protocol
+
+Both runtimes return the **same** `{ success, passed, tests, empty }` shape over the
+same postMessage protocol:
+
+- `run-suite` request (host → iframe) carries a unique **`id`**. The reply
+  (`suite-result`, iframe → host) **echoes that id** so the host resolves the right
+  pending promise even if suites overlap or a stale response arrives late.
+- The host (`PanelPreviewClient`) validates the message `source` is the preview
+  iframe's window and ignores replies with unknown/stale ids.
+- **Empty suites fail explicitly.** A suite with zero checks never "passes" via the
+  `[].every(...) === true` empty-trick. Both runtimes emit a single failing
+  `{ name: 'suite', passed: false, message: 'Empty suite: …' }` entry with `empty: true`,
+  and the host records it as a failed attempt, never a completion.
+
+### Template-specific runtimes & `ctx`
+
+| Template | Runner | `ctx.doc` | `ctx.mount` | Suite language |
+|----------|--------|-----------|-------------|----------------|
+| `vue` / `vue-sass` | Vite dev server + Vue Test Utils | ✅ | ✅ (`@vue/test-utils`) | `.ts` |
+| `html` | **static `server.js` — no Vite, no npm deps** | ✅ | ❌ (`undefined`) | `.js` |
+
+- `vue` / `vue-sass`: run under Vite, import the `.ts` suite (Vite transpiles), and can
+  mount components with Vue Test Utils via `ctx.mount`.
+- `html` (static): a dependency-free static server (`node server.js`, no
+  `vite`/`@vitest/expect`/`chai` installs). Suites are authored as **plain JavaScript**
+  (`.js`) because browsers can't natively import TypeScript. Only `ctx.doc` is available.
+
+How it runs:
+
+- The container starts the dev server (`pnpm run dev` → `node server.js` for the static
+  `html` template, Vite for `vue`/`vue-sass`); its entry (`src/main.ts` for
+  vue/vue-sass, `main.js` for `html`) imports the harness, which
+  self-initializes a `run-suite` message listener.
+- For static `html` challenges the host marks the preview with a `?challenge=` query
+  param pointing at the suite file, and `main.js` only loads the harness when that
+  param is present — plain HTML demos skip the harness entirely.
+- `ChallengeCheck` / the toolbar both go through `useChallengeValidation`, which calls
+  `window.__runChallengeSuite(file)` (exposed by `PanelPreviewClient`) — a single shared
+  path so all UI surfaces report consistent results.
+- The harness `import()`s the suite (Vite transpiles `.ts`; the static server serves
+  `.js` natively), runs it against the live same-origin `document`, and replies with the
+  shared `suite-result` shape (including the request id).
+- `PanelPreviewClient` resolves the pending promise by id, and the UI renders pass/fail
+  per check. Completion is recorded only for a non-empty, fully-passing suite (see the
+  `db/challenges` layer, which filters by `status === 'passed'`).
+
+### Scaffolding challenges
+
+`packages/create-content` (`content` CLI) generates a `.template` for new challenges:
+- static `html` → `__challenge__/suite.js` with an explicit failing TODO check so a
+  fresh scaffold never silently passes.
+- `vue`/`vue-sass` → `__challenge__/suite.ts`, `ctx.mount`-compatible (Vue Test Utils).
+
 ## Debugging the Container (almostnode)
 
 Set `window.__almostnodeDebug = true` in the browser console **before** triggering a
