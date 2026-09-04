@@ -7,21 +7,6 @@ const ui = useUiState()
 const { width: windowWidth } = useWindowSize()
 const isMobile = computed(() => windowWidth.value < 768)
 
-// Track slide direction for mobile transitions
-// 'forward': incoming slides in from right (next lesson, or docs→code)
-// 'back':    incoming slides in from left  (prev lesson, or code→docs)
-const slideDirection = ref<'forward' | 'back'>('forward')
-
-watch(
-  () => ui.mainViewMode,
-  (next, prev) => {
-    if (prev === 'docs' && next === 'code')
-      slideDirection.value = 'forward'
-    else if (prev === 'code' && next === 'docs')
-      slideDirection.value = 'back'
-  },
-)
-
 // When expanding back to desktop, restore split view unless the user explicitly
 // chose a focused mode via the desktop nav (tracked by mainViewModeFromDesktop).
 watch(isMobile, (nowMobile, wasMobile) => {
@@ -40,14 +25,6 @@ watch(isMobile, (nowMobile, wasMobile) => {
 const guide = useGuideStore()
 const route = useRoute()
 
-watch(
-  () => route.path,
-  (newPath, oldPath) => {
-    if (oldPath && newPath !== oldPath && isMobile.value)
-      slideDirection.value = newPath > oldPath ? 'forward' : 'back'
-  },
-)
-
 const effectiveMainViewMode = computed(() => {
   if (guide.currentGuide?.features?.defaultLayout === 'docs')
     return 'docs'
@@ -56,6 +33,31 @@ const effectiveMainViewMode = computed(() => {
 const isSplitMode = computed(() => effectiveMainViewMode.value === 'split')
 const isCodeOnlyMode = computed(() => effectiveMainViewMode.value === 'code')
 const isDocsOnlyMode = computed(() => effectiveMainViewMode.value === 'docs')
+
+// Mobile panel slide styles — both panels always mounted, toggled via CSS transform
+const codePaneStyle = computed(() => {
+  const active = isCodeOnlyMode.value
+  return {
+    // transform: active ? 'translateX(0)' : 'translateX(100%)',
+    zIndex: active ? 1 : 0,
+    visibility: (active ? 'visible' : 'hidden') as 'visible' | 'hidden',
+    // transition: active
+    //   ? 'transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s'
+    //   : 'transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s 0.28s',
+  }
+})
+
+const docsPaneStyle = computed(() => {
+  const active = !isCodeOnlyMode.value
+  return {
+    // transform: active ? 'translateX(0)' : 'translateX(-100%)',
+    zIndex: active ? 1 : 0,
+    visibility: (active ? 'visible' : 'hidden') as 'visible' | 'hidden',
+    // transition: active
+    //   ? 'transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s'
+    //   : 'transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s 0.28s',
+  }
+})
 
 // When reversed, code panel comes first physically; panels array order must match template order.
 const isReversed = computed(() => ui.mainLayoutReverse)
@@ -431,16 +433,16 @@ function onEmbeddedResizeEnd(details: { size: number[] }) {
 </script>
 
 <template>
-  <!-- Mobile: single panel view, toggled via MobilePanelToggle -->
+  <!-- Mobile: both panels always mounted, toggled via CSS transform/visibility -->
   <template v-if="isMobile">
     <div h-full relative of-hidden>
-      <!-- Code dock stays mounted even while the docs pane is shown (just hidden
-           with `visibility`, not `display:none`) so the preview iframe keeps
-           running and challenge DOM validation can inspect it from the docs view. -->
+      <!-- Code dock stays mounted so the preview iframe keeps running and
+           challenge DOM validation can inspect it from the docs view. -->
       <div
         key="code-pane"
-        h-full grid="~ rows-[max-content_1fr]"
-        :class="isCodeOnlyMode ? 'visible' : 'invisible'"
+        grid="~ rows-[max-content_1fr]"
+        h-full inset-0 absolute
+        :style="codePaneStyle"
       >
         <PanelCodeToolbar />
         <div min-h-0 relative of-hidden>
@@ -462,12 +464,14 @@ function onEmbeddedResizeEnd(details: { size: number[] }) {
         </div>
       </div>
 
-      <!-- Docs slides over the hidden code dock when active -->
-      <Transition :name="slideDirection === 'forward' ? 'mobile-slide-left' : 'mobile-slide-right'">
-        <div v-if="!isCodeOnlyMode" key="docs-pane" absolute inset-0 h-full>
-          <PanelDocs :key="route.path" />
-        </div>
-      </Transition>
+      <!-- Docs panel slides over or under the code dock -->
+      <div
+        key="docs-pane"
+        h-full inset-0 absolute
+        :style="docsPaneStyle"
+      >
+        <PanelDocs :key="route.path" />
+      </div>
     </div>
   </template>
 
@@ -658,45 +662,5 @@ function onEmbeddedResizeEnd(details: { size: number[] }) {
 .slide-fade-leave-to {
   transform: translateX(-30vw);
   opacity: 0;
-}
-
-/* Mobile panel slide transitions */
-.mobile-slide-left-enter-active,
-.mobile-slide-left-leave-active,
-.mobile-slide-right-enter-active,
-.mobile-slide-right-leave-active {
-  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-/* docs→code: incoming slides in from right, outgoing exits to left */
-.mobile-slide-left-enter-from {
-  transform: translateX(100%);
-}
-.mobile-slide-left-enter-to {
-  transform: translateX(0);
-}
-.mobile-slide-left-leave-from {
-  transform: translateX(0);
-}
-.mobile-slide-left-leave-to {
-  transform: translateX(-100%);
-}
-
-/* code→docs: incoming slides in from left, outgoing exits to right */
-.mobile-slide-right-enter-from {
-  transform: translateX(-100%);
-}
-.mobile-slide-right-enter-to {
-  transform: translateX(0);
-}
-.mobile-slide-right-leave-from {
-  transform: translateX(0);
-}
-.mobile-slide-right-leave-to {
-  transform: translateX(100%);
 }
 </style>
