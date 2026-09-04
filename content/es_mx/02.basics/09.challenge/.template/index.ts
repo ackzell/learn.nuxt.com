@@ -6,6 +6,7 @@ export const meta: GuideMeta = {
     defaultLayout: 'split',
     terminal: false,
     fileTree: false,
+    console: true,
   },
   template: 'html',
   ignoredFiles: ['package.json', 'main.js', 'style.css', 'server.js'],

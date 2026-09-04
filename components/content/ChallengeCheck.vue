@@ -40,37 +40,43 @@ const statusSummary = computed(() => {
 </script>
 
 <template>
-  <div v-if="hasValidation" class="challenge-client" flex="~ col gap-3" border="~ base solid" p4 rounded-xl>
-    <div flex="~ gap-2 items-center">
-      <div i-mynaui-lightning-solid text-challenge flex-none />
-      <span text-sm font-semibold>{{ $t('challenge.check-title') }}</span>
-    </div>
+  <div
+    v-if="hasValidation"
+    class="challenge-client"
+    flex="~ col gap-3"
+    border="~ solid challenge"
+    bg="bgr dark:bgr-dark"
+    my-4 p4 rounded-xl
+    :class="{ 'border-positive': completed && !showFeedback }"
+  >
+    <div flex="~ gap-2 items-center justify-between">
+      <div v-if="completed && !showFeedback" flex="~ gap-2 items-center" text-positive>
+        <div i-mynaui-check-hexagon-solid flex-none />
+        <span text-sm>{{ $t('challenge.completed') }}</span>
+      </div>
+      <div v-else flex="~ gap-2 items-center" text-challenge>
+        <div i-mynaui-lightning-solid flex-none />
+        <span>{{ $t('challenge.check-title') }}</span>
+      </div>
+      <div flex="~ gap-2 items-center flex-wrap justify-end">
+        <button
+          type="button"
+          text-sm text-white font-medium px3 py1.5 rounded-lg dark:bg-primary-dark-500
+          class="bg-challenge! disabled:op60 disabled:cursor-not-allowed"
+          :disabled="computing"
+          @click="check"
+        >
+          <span v-if="computing" flex="~ gap-2 items-center">
+            <div i-svg-spinners-pulse-multiple />
+            <div>{{ $t('challenge.checking') }}</div>
+          </span>
+          <span v-else>{{ $t('challenge.check') }}</span>
+        </button>
 
-    <div v-if="completed && !showFeedback" flex="~ gap-2 items-center" text-positive>
-      <div i-mynaui-check-hexagon-solid flex-none />
-      <span text-sm>{{ $t('challenge.completed') }}</span>
-    </div>
-
-    <div flex="~ gap-2 items-center flex-wrap">
-      <button
-        type="button"
-
-        bg="primary-600 dark:bg-primary-dark-500"
-        text-sm text-white font-medium px3 py1.5 rounded-lg
-        class="disabled:op60 disabled:cursor-not-allowed"
-        :disabled="computing"
-        @click="check"
-      >
-        <span v-if="computing" inline-flex="~ gap-1 items-center">
-          <div i-svg-spinners-90-ring-with-bg animate-spin />
-          {{ $t('challenge.checking') }}
+        <span v-if="statusSummary" text-md op60 data-testid="challenge-status-summary">
+          {{ statusSummary }}
         </span>
-        <span v-else>{{ $t('challenge.check') }}</span>
-      </button>
-
-      <span v-if="statusSummary" text-xs op60 data-testid="challenge-status-summary">
-        {{ statusSummary }}
-      </span>
+      </div>
     </div>
 
     <div
