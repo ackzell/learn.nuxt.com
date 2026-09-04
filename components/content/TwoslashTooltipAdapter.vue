@@ -15,6 +15,7 @@ defineProps<{
     :default-shown="persisted"
     :persistent="persisted"
     :hide-timeout="100"
+    :placement="persisted ? 'bottom-start' : undefined"
   >
     <span class="twoslash-token-content" v-html="tokenHtml" />
   </TooltipTrigger>

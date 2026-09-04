@@ -15,6 +15,7 @@ interface TooltipTriggerProps {
   hideTimeout?: number
   noEasing?: boolean
   persistent?: boolean
+  placement?: Placement
 }
 
 const props = withDefaults(defineProps<TooltipTriggerProps>(), {
@@ -134,10 +135,10 @@ async function updateFloatingPosition() {
   }
 
   const { x, y, placement } = await computePosition(virtualReference, tooltipEl.value, {
-    placement: props.noFollow ? 'bottom-start' : 'bottom-start',
+    placement: props.placement ?? 'bottom-start',
     middleware: [
       offset(props.noFollow ? 6 : 8),
-      flip({ fallbackPlacements: ['top-start', 'top', 'bottom'] }),
+      ...(props.placement ? [] : [flip({ fallbackPlacements: ['top-start', 'top', 'bottom'] })]),
       shift({ padding: 12 }),
     ],
   })
