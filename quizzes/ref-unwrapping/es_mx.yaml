@@ -1,0 +1,33 @@
+ref-unwrapping:
+  title: Comprobación de ref()
+  questions:
+    script-access:
+      prompt: En la etiqueta `<script>`, ¿cómo leemos el valor actual de un `ref`?
+      options:
+        direct-assign: '`message = "..."`'
+        dot-value: '`message.value`'
+        auto-unwrapped: '`message` (desenvuelto automáticamente)'
+        proxies: '`$refs.message`'
+      explanation: |
+        En el script, un `ref` es un objeto envolvente, así que lo leemos y
+        escribimos a través de su propiedad `.value`.
+    template-access:
+      prompt: 'Verdadero o falso: en la `template`, Vue desenvuelve automáticamente los refs de nivel superior.'
+      options:
+        'true': 'Verdadero'
+        'false': 'Falso'
+      explanation: |
+        Vue desenvuelve los refs que son propiedades de nivel superior del
+        contexto de renderizado de la plantilla, por eso escribimos
+        `{{ message }}`, no `{{ message.value }}`.
+    log-object:
+      prompt: Cuando registramos en consola la variable del ref (no `.value`), ¿qué aparece?
+      options:
+        string-value: El valor como cadena
+        wrapper-object: Un objeto envolvente `RefImpl`
+        dom-node: Un nodo del DOM
+        event-object: Un objeto de evento
+      explanation: |
+        Al registrar `message` (sin `.value`) aparece el envolvente `RefImpl`;
+        `.value` da la cadena real. Esto refleja la salida de consola que viste
+        en la lección.

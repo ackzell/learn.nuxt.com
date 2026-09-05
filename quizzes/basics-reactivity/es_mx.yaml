@@ -1,0 +1,31 @@
+basics-reactivity:
+  title: Repaso de fundamentos de Vue
+  questions:
+    interpolation:
+      prompt: ¿Qué sintaxis usa Vue para interpolar un valor dinámico dentro de una plantilla?
+      options:
+        single-braces: '`{ value }`'
+        double-braces: '`{{ value }}`'
+        square-brackets: '`[ value ]`'
+        parentheses: '`( value )`'
+      explanation: |
+        Vue usa la sintaxis "de bigotes" — las dobles llaves — para interpolar
+        valores reactivos en una plantilla, p. ej. `{{ message }}`.
+    ref-reactive:
+      prompt: 'Verdadero o falso: `ref()` crea una referencia reactiva a un valor.'
+      options:
+        'true': 'Verdadero'
+        'false': 'Falso'
+      explanation: |
+        `ref()` envuelve un valor para que Vue detecte los cambios y vuelva a
+        renderizar la plantilla cuando ese valor cambie.
+    mount-target:
+      prompt: En la app inicial, ¿qué argumento le pasamos a `app.mount()`?
+      options:
+        id-selector: '`"#app"` — el id del elemento DOM al que se adjunta'
+        component: Una definición de componente Vue
+        plain-string: Una cadena de texto
+        callback: Una función callback
+      explanation: |
+        `app.mount('#app')` le indica a Vue a qué elemento DOM existente debe
+        adjuntarse la app.

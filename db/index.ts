@@ -32,10 +32,26 @@ export interface Challenge {
   attempts: number
 }
 
+export type QuizStatus = 'passed' | 'failed'
+
+export interface QuizRecord {
+  id: number
+  /** Page path of the lesson hosting the quiz (or an explicit sessionName override). */
+  sessionName: string
+  status: QuizStatus
+  /** Set when the quiz was last passed (status === 'passed'). */
+  passedAt?: Date
+  /** Running count of submissions (passes and failures). */
+  attempts: number
+  /** Best percentage score (0-100) achieved across attempts. */
+  bestScore: number
+}
+
 const db = new Dexie('AmoxtliVueDB') as Dexie & {
   sessions: EntityTable<Session, 'id'>
   snapshots: EntityTable<Snapshot, 'id'>
   challenges: EntityTable<Challenge, 'id'>
+  quizzes: EntityTable<QuizRecord, 'id'>
 }
 
 db.version(1).stores({
@@ -47,6 +63,13 @@ db.version(2).stores({
   sessions: '++id, name, createdAt, updatedAt',
   snapshots: '++id, sessionId, files, createdAt, type, message',
   challenges: '++id, sessionName, status, passedAt, attempts',
+})
+
+db.version(3).stores({
+  sessions: '++id, name, createdAt, updatedAt',
+  snapshots: '++id, sessionId, files, createdAt, type, message',
+  challenges: '++id, sessionName, status, passedAt, attempts',
+  quizzes: '++id, sessionName, status, passedAt, attempts, bestScore',
 })
 
 export { db }

@@ -4,6 +4,7 @@
     "dbaeumer.vscode-eslint",
     "vivaxy.vscode-conventional-commits",
     "johnsoncodehk.vue-split-editor",
-    "martinszeltins.vue-component-usage"
+    "martinszeltins.vue-component-usage",
+    "redhat.vscode-yaml"
   ]
 }

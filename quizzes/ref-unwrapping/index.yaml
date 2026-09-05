@@ -1,0 +1,15 @@
+passThreshold: 100
+feedback: submit
+questions:
+  - id: script-access
+    type: scq
+    options: [direct-assign, dot-value, auto-unwrapped, proxies]
+    answer: [dot-value]
+  - id: template-access
+    type: tf
+    options: ['true', 'false']
+    answer: ['true']
+  - id: log-object
+    type: scq
+    options: [string-value, wrapper-object, dom-node, event-object]
+    answer: [wrapper-object]

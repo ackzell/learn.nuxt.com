@@ -114,4 +114,8 @@ In the [words of the docs](https://vuejs.org/guide/essentials/reactivity-fundame
 > Another nice trait of refs is that unlike plain variables, you can pass refs into functions while retaining access to the latest value and the reactivity connection. This is particularly useful when refactoring complex logic into reusable code.
 
 ::
+
+Asegurémonos de que las ideas clave quedaron claras:
+
+::quiz{id="ref-unwrapping"}
  

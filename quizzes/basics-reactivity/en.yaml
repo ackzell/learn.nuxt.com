@@ -1,0 +1,31 @@
+basics-reactivity:
+  title: Vue Basics Checkpoint
+  questions:
+    interpolation:
+      prompt: Which syntax does Vue use to interpolate a dynamic value inside a template?
+      options:
+        single-braces: '`{ value }`'
+        double-braces: '`{{ value }}`'
+        square-brackets: '`[ value ]`'
+        parentheses: '`( value )`'
+      explanation: |
+        Vue uses the "mustache" syntax — double curly braces — to interpolate
+        reactive values in a template, e.g. `{{ message }}`.
+    ref-reactive:
+      prompt: 'True or false: `ref()` creates a reactive reference to a value.'
+      options:
+        'true': 'True'
+        'false': 'False'
+      explanation: |
+        `ref()` wraps a value so Vue tracks changes to it and re-renders the
+        template whenever that value changes.
+    mount-target:
+      prompt: In the starter app, what argument do we pass to `app.mount()`?
+      options:
+        id-selector: '`"#app"` — the id of the DOM element to attach to'
+        component: A Vue component definition
+        plain-string: A plain text string
+        callback: A callback function
+      explanation: |
+        `app.mount('#app')` tells Vue which existing DOM element the app should
+        be attached to.

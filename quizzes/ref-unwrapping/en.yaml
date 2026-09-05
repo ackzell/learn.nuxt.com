@@ -1,0 +1,32 @@
+ref-unwrapping:
+  title: ref() check
+  questions:
+    script-access:
+      prompt: In the `<script>` tag, how do we read the current value of a `ref`?
+      options:
+        direct-assign: '`message = "..."`'
+        dot-value: '`message.value`'
+        auto-unwrapped: '`message` (auto-unwrapped)'
+        proxies: '`$refs.message`'
+      explanation: |
+        In the script, a ref is a wrapper object, so we read and write it
+        through its `.value` property.
+    template-access:
+      prompt: 'True or false: in the `template`, Vue unwraps top-level refs automatically.'
+      options:
+        'true': 'True'
+        'false': 'False'
+      explanation: |
+        Vue unwraps refs that are top-level properties of the template render
+        context, so we write `{{ message }}`, not `{{ message.value }}`.
+    log-object:
+      prompt: When we log the ref variable itself (not `.value`), what shows up in the console?
+      options:
+        string-value: The string value
+        wrapper-object: A `RefImpl` wrapper object
+        dom-node: A DOM node
+        event-object: An event object
+      explanation: |
+        Logging `message` (without `.value`) shows the `RefImpl` wrapper;
+        `.value` gives the actual string. This mirrors the console output you
+        saw in the lesson.

@@ -407,6 +407,126 @@ How it runs:
   fresh scaffold never silently passes.
 - `vue`/`vue-sass` → `__challenge__/suite.ts`, `ctx.mount`-compatible (Vue Test Utils).
 
+## Quizzes
+
+Quizzes are **static-knowledge assessments** (multiple-choice + true/false), authored
+in a shared **quiz bank** and rendered by the `::quiz` MDC block. Unlike challenges,
+quizzes never boot a WebContainer — there is no harness, no iframe, and no postMessage
+protocol. They are fully client-side.
+
+### The quiz bank
+
+Each quiz lives in its own folder under `quizzes/<id>/`:
+
+```
+quizzes/
+  basics-reactivity/
+    index.yaml          # SHARED structure (edited once, never copied)
+    en.yaml             # strings
+    es_mx.yaml
+    de.yaml             # add when a new locale lands
+```
+
+**`index.yaml` — the shared structure.** Question types, option **ids** (and their
+order), correct answers and the pass threshold. Changing an answer, the threshold, or
+an option list happens here **once**, for every locale:
+
+```yaml
+passThreshold: 80
+feedback: submit
+questions:
+  - id: interpolation
+    type: mcq
+    options: [single-braces, double-braces, square-brackets, parentheses]
+    answer: [double-braces]
+  - id: ref-reactive
+    type: tf
+    options: ['true', 'false']
+    answer: ['true']
+```
+
+`tf` questions must have exactly 2 options and exactly one answer; `mcq` options may
+share multiple correct answers. Options are referenced by **id**, never by index, so
+reordering or re-labeling options in one language cannot silently break answers in
+another.
+
+**`<locale>.yaml` — strings only**, keyed by the same ids. All string fields
+(`title`, `prompt`, `options`, `explanation`) are **Markdown**: bold, italic, inline
+code, links, and fenced code blocks all render. Multi-line content uses YAML block
+scalars (`|`):
+
+```yaml
+basics-reactivity:
+  title: Vue Basics Checkpoint
+  questions:
+    interpolation:
+      prompt: Which syntax does Vue use to interpolate a value into a template?
+      options:
+        single-braces: '`{ value }`'
+        double-braces: '`{{ value }}`'
+      explanation: |
+        Vue uses double curly braces — e.g. `{{ message }}`.
+```
+
+### Referencing a quiz in a lesson
+
+Use the MDC block anywhere in a lesson's markdown:
+
+```md
+::quiz{id="basics-reactivity"}
+```
+
+- The quiz resolves for the **active locale**; a locale without strings falls back to
+  `en`, and missing option labels fall back to the option id.
+- Progress is recorded per page: the block's `sessionName` defaults to the normalized
+  lesson path (numeric prefixes stripped), overridable per block:
+  `::quiz{id="ref-unwrapping" sessionName="refs"}`.
+- **Reusable:** the same id may appear in multiple lessons (e.g. a mid-lesson
+  checkpoint + a chapter review).
+- A standalone quiz lesson is a docs-only lesson (`defaultLayout: 'docs'`) with a
+  minimal `.template/index.ts` — no playground mounts.
+
+### Resolution & data flow
+
+- `modules/template-loader.ts` registers the `virtual:quiz-map` module. It scans
+  `quizzes/*/`, parses the YAML (`js-yaml`), **validates invariants** at load, and
+  exposes `{ id → { structure, strings } }` as a build-time payload (SSR-safe).
+- `composables/useQuiz.ts` resolves a quiz for the active locale
+  (`useQuiz(id) → useAsyncData`) and exposes pure `gradeQuiz()` readers.
+- `components/content/Quiz.vue` (`::quiz`) renders the questions, grades a submission,
+  and renders strings through the **MDC runtime** (`MDC` component, auto-registered by
+  `@nuxtjs/mdc`).
+
+### Interaction & grading
+
+- **Submit-then-grade** (V1): the learner selects answers freely, then clicks
+  "Check answers". Selections are mutable until submit.
+- A question is correct only when the selected ids **exactly** match `answer`
+  (no partial credit for multi-select).
+- `percentage = round(correct / total * 100)`; `passed = percentage >= passThreshold`.
+- Unlimited retakes; "Retake" clears the selections.
+- Immediate per-question feedback is designed for but **not implemented** — `index.yaml`
+  must keep `feedback: submit` (the loader rejects other values).
+
+### Persistence
+
+`db/quizzes` (Dexie `quizzes` table, added in `db.version(3)`) record each submission:
+`sessionName`, `status` (`passed`/`failed`), `passedAt`, `attempts`, and `bestScore`
+(best 0-100 percentage). `useQuizProgress` live-queries passed quizzes. Quiz progress
+is **independent** of challenge progress — passing one never marks the other.
+
+### Load-time invariant validation
+
+The quiz-map loader throws (build) or warns (dev) on structural problems, and warns on
+string-coverage gaps:
+
+- `answer` ids that aren't options; duplicate question ids; `tf` without 2 options or
+  with >1 answer; empty answers; out-of-range `passThreshold`; `feedback !== 'submit'`.
+- a locale file missing a prompt or an option label for any question.
+
+Add a new quiz folder and it appears in the map automatically; edit any YAML during
+development and the watcher invalidates `virtual:quiz-map` without a dev restart.
+
 ## Debugging the Container (almostnode)
 
 Set `window.__almostnodeDebug = true` in the browser console **before** triggering a

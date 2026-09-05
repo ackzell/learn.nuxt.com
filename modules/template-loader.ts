@@ -1,14 +1,17 @@
 import type { ViteDevServer } from 'vite'
-import { readFileSync, utimesSync } from 'node:fs'
+import type { QuizMapEntry, QuizStrings, QuizStructure } from '~/types/quiz'
+import { existsSync, readFileSync, utimesSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { addTemplate, addVitePlugin, defineNuxtModule } from '@nuxt/kit'
 import { watch } from 'chokidar'
 import fg from 'fast-glob'
+import yaml from 'js-yaml'
 import { join, relative, resolve } from 'pathe'
 import { TEMPLATE_TYPES } from '~/types/guides'
 import { isBinaryFile } from '../lib/binary'
+import { validateQuizStrings, validateQuizStructure } from '../lib/quiz-validation'
 
 export default defineNuxtModule({
   meta: {
@@ -134,7 +137,22 @@ export default defineNuxtModule({
         // markdown panel refreshes via the MD touch + Nuxt Content HMR.
       })
 
-      nuxt.hook('close', () => watcher.close())
+      // Watch the quizzes/ bank so YAML edits invalidate virtual:quiz-map
+      // without a full dev-server restart.
+      const quizWatcher = watch(
+        join(process.cwd(), 'quizzes'),
+        { ignoreInitial: true },
+      )
+      quizWatcher.on('all', () => {
+        if (!viteServer)
+          return
+        for (const [url, mod] of viteServer.moduleGraph.urlToModuleMap) {
+          if (url.includes('quiz-map')) {
+            viteServer.moduleGraph.invalidateModule(mod)
+          }
+        }
+      })
+      nuxt.hook('close', () => quizWatcher.close())
     }
 
     // Default Templates
@@ -354,6 +372,96 @@ export default defineNuxtModule({
         )
 
         return `export default {\n${lines.join(',\n')}\n};\n`
+      },
+    })
+
+    // ── Virtual module: quiz-map ──
+    // Scans the `quizzes/` bank (structure + per-locale string YAML) and
+    // exposes every quiz as one data payload. The `Quiz` component resolves a
+    // quiz by id and the current locale from this map. Mirrors the
+    // guide-meta-map/guide-session-map virtual modules.
+    const quizMapVirtualId = 'virtual:quiz-map'
+    const quizMapResolvedId = `\0${quizMapVirtualId}`
+
+    addVitePlugin({
+      name: 'nuxt-playground:quiz-map',
+      enforce: 'pre',
+
+      resolveId(id) {
+        if (id === quizMapVirtualId)
+          return quizMapResolvedId
+      },
+
+      async load(id) {
+        if (id !== quizMapResolvedId)
+          return
+
+        const quizzesDir = join(process.cwd(), 'quizzes')
+        let quizDirs: string[] = []
+        try {
+          quizDirs = await fg('*', {
+            cwd: quizzesDir,
+            onlyDirectories: true,
+            deep: 1,
+            ignore: ['**/node_modules/**'],
+          })
+        }
+        catch {
+          // quizzes/ dir may not exist yet — that's fine, empty map.
+        }
+
+        const entries: Record<string, QuizMapEntry> = {}
+
+        for (const dir of quizDirs.sort()) {
+          const quizPath = join(quizzesDir, dir)
+          const indexFile = join(quizPath, 'index.yaml')
+          if (!existsSync(indexFile))
+            continue
+
+          const structure = yaml.load(readFileSync(indexFile, 'utf-8')) as QuizStructure | undefined
+          if (!structure) {
+            console.warn(`[quiz-map] "${dir}" has an empty index.yaml — skipping.`)
+            continue
+          }
+          try {
+            validateQuizStructure(structure)
+          }
+          catch (e) {
+            if (nuxt.options.dev) {
+              console.warn(`[quiz-map] invalid quiz "${dir}":`, (e as Error).message)
+              continue
+            }
+            throw e
+          }
+
+          const strings: Record<string, QuizStrings> = {}
+          const localeFiles = await fg('*.yaml', {
+            cwd: quizPath,
+            onlyFiles: true,
+            ignore: ['index.yaml'],
+          })
+          for (const fname of localeFiles.sort()) {
+            const locale = fname.replace(/\.yaml$/, '')
+            const parsed = yaml.load(readFileSync(join(quizPath, fname), 'utf-8')) as
+              Record<string, QuizStrings> | undefined
+            const quizStrings = parsed?.[dir]
+            if (!quizStrings) {
+              console.warn(`[quiz-map] "${dir}" (${locale}) is missing its "${dir}" block — skipped.`)
+              continue
+            }
+            const problems = validateQuizStrings(structure, quizStrings)
+            if (problems.length) {
+              console.warn(`[quiz-map] "${dir}" (${locale}):`)
+              for (const p of problems)
+                console.warn(`  - ${p}`)
+            }
+            strings[locale] = quizStrings
+          }
+
+          entries[dir] = { id: dir, structure, strings }
+        }
+
+        return `export default ${JSON.stringify(entries)}\n`
       },
     })
   },

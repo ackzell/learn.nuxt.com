@@ -21,6 +21,17 @@ challenge:
   pass: ¡Aprobado!
   fail: Casi — revisa los detalles abajo
   completed: Has completado este desafío
+quiz:
+  check-title: Pon a prueba lo aprendido
+  question: 'Pregunta {n}:'
+  submit: Revisar respuestas
+  retake: Volver a intentar
+  passed: '¡Aprobado!'
+  failed: 'Casi — revisa las respuestas de abajo'
+  explanation: Explicación
+  completed: Has aprobado este quiz
+  answer-all-hint: Intenta responder todas las preguntas primero
+  score: "{score}/{total}"
 search-dots: Buscar...
 steps:
   initializing-webcontainer: Inicializando WebContainer

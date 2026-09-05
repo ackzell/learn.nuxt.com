@@ -19,8 +19,19 @@ challenge:
   check: Check my work
   checking: Checking…
   pass: Passed!
-  fail: Not quite — see the details below
+  fail: Not quite — see the details above
   completed: You've completed this challenge
+quiz:
+  check-title: Check your understanding
+  question: 'Question {n}:'
+  submit: Check answers
+  retake: Retake quiz
+  passed: Passed!
+  failed: Not quite — review the answers above
+  explanation: Explanation
+  completed: You've passed this quiz
+  answer-all-hint: Try answering all the questions first
+  score: '{score}/{total}'
 search-dots: Search...
 steps:
   initializing-webcontainer: Initializing WebContainer

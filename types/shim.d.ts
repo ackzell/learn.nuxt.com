@@ -45,3 +45,7 @@ declare module 'virtual:guide-meta-map' {
   const map: Record<string, () => Promise<{ meta: import('./guides').GuideMeta }>>
   export default map
 }
+declare module 'virtual:quiz-map' {
+  const map: Record<string, import('./quiz').QuizMapEntry>
+  export default map
+}

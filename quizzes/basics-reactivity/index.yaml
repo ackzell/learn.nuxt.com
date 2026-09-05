@@ -1,0 +1,18 @@
+# Shared structure for the quiz — edited once. Only the structure lives here
+# (question types, option ids + order, and correct answers). Strings are
+# authored per-locale (en.yaml / es_mx.yaml / ...) and keyed by the same ids.
+passThreshold: 80
+feedback: submit
+questions:
+  - id: interpolation
+    type: mcq
+    options: [single-braces, double-braces, square-brackets, parentheses]
+    answer: [double-braces]
+  - id: ref-reactive
+    type: tf
+    options: ['true', 'false']
+    answer: ['true']
+  - id: mount-target
+    type: mcq
+    options: [id-selector, component, plain-string, callback]
+    answer: [id-selector]

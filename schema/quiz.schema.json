@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://amoxtli.dev/schema/quiz.schema.json",
+  "title": "Amoxtli quiz YAML",
+  "description": "Describes both quizzes/<id>/index.yaml (shared structure) and quizzes/<id>/<locale>.yaml (per-locale strings). Get autocomplete + validation in VS Code (Red Hat YAML extension).",
+  "oneOf": [
+    { "$ref": "#/$defs/quizStructure" },
+    { "$ref": "#/$defs/quizStringsFile" }
+  ],
+  "$defs": {
+    "quizStructure": {
+      "type": "object",
+      "required": ["passThreshold", "feedback", "questions"],
+      "additionalProperties": false,
+      "properties": {
+        "passThreshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Minimum percentage of correct answers required to pass."
+        },
+        "feedback": {
+          "type": "string",
+          "enum": ["submit"],
+          "description": "When feedback is shown. Only 'submit' is currently supported."
+        },
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/questionDefinition" }
+        }
+      }
+    },
+    "questionDefinition": {
+      "type": "object",
+      "required": ["id", "type", "options", "answer"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique id, also used to key the per-locale strings."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["mcq", "scq", "tf"],
+          "description": "Question type: mcq = multi-select (checkbox), scq = single-choice (radio), tf = true/false.",
+          "enumDescriptions": {
+            "mcq": "Multiple-choice — one or more correct answers; learners tick checkboxes.",
+            "scq": "Single-choice — exactly one correct answer; learners pick a radio button.",
+            "tf": "True/false — exactly two options ('true'/'false'), exactly one correct answer."
+          }
+        },
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Unique option ids, in display order. tf must have exactly 2."
+        },
+        "answer": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Ids of the correct options. scq/tf: exactly one. mcq: one or more."
+        }
+      }
+    },
+    "quizStringsFile": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Top-level key is the quiz id and must match the quizzes/ directory name.",
+      "propertyNames": {
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "additionalProperties": { "$ref": "#/$defs/quizStrings" }
+    },
+    "quizStrings": {
+      "type": "object",
+      "required": ["questions"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Shown above the questions."
+        },
+        "questions": {
+          "type": "object",
+          "description": "Question strings keyed by the ids from index.yaml.",
+          "additionalProperties": { "$ref": "#/$defs/questionStrings" }
+        }
+      }
+    },
+    "questionStrings": {
+      "type": "object",
+      "required": ["prompt", "options"],
+      "additionalProperties": false,
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "description": "Question text. May contain Markdown."
+        },
+        "options": {
+          "type": "object",
+          "description": "Option labels keyed by the option ids from index.yaml. May contain Markdown.",
+          "additionalProperties": { "type": "string" }
+        },
+        "explanation": {
+          "type": "string",
+          "description": "Shown after submit. May contain Markdown."
+        }
+      }
+    }
+  }
+}
