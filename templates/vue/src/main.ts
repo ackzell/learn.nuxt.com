@@ -1,12 +1,29 @@
 import type { ClientInfo, FrameFunctions, ParentFunctions } from '../../../types/rpc'
 import { createBirpc } from 'birpc'
 import { createApp } from 'vue'
-import { startChallengeRuntime } from '../__challenge__/harness'
 import App from './App.vue'
 
 const app = createApp(App)
 
-startChallengeRuntime('/__challenge__/suite.ts')
+// The challenge runtime imports @vitest/expect + chai, which are heavy and
+// (in the container dev server) fragile to serve. Load it lazily: only when
+// the host actually pings/runs a challenge, mirroring the html template.
+let challengeStarted = false
+window.addEventListener('message', (event) => {
+  if (challengeStarted)
+    return
+  if (typeof event.data !== 'object' || event.data === null)
+    return
+  if (event.data.source !== 'nuxt-playground-parent-challenge')
+    return
+  challengeStarted = true
+  import('../__challenge__/harness').then(({ startChallengeRuntime }) => {
+    startChallengeRuntime('/__challenge__/suite.ts')
+  }).catch(() => {
+    // Guard has already been armed; if the import fails the host will get a
+    // suite-result failure on its next run-suite instead of a crashing preview.
+  })
+})
 
 // Initialize RPC bridge to communicate with parent frame (amoxtli-vue)
 const functions: FrameFunctions = {

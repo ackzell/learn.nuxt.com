@@ -2,6 +2,10 @@ import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
+  optimizeDeps: {
+    noDiscovery: true,
+    include: ['@vitest/expect', 'chai'],
+  },
   plugins: [
     vue(),
     {
