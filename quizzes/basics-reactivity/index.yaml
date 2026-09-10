@@ -5,7 +5,7 @@ passThreshold: 80
 feedback: submit
 questions:
   - id: interpolation
-    type: mcq
+    type: scq
     options: [single-braces, double-braces, square-brackets, parentheses]
     answer: [double-braces]
   - id: ref-reactive
@@ -13,6 +13,6 @@ questions:
     options: ['true', 'false']
     answer: ['true']
   - id: mount-target
-    type: mcq
+    type: scq
     options: [id-selector, component, plain-string, callback]
     answer: [id-selector]

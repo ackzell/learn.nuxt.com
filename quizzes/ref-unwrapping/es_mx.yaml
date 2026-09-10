@@ -14,8 +14,8 @@ ref-unwrapping:
     template-access:
       prompt: 'Verdadero o falso: en la `template`, Vue desenvuelve automáticamente los refs de nivel superior.'
       options:
-        'true': 'Verdadero'
-        'false': 'Falso'
+        'true': Verdadero
+        'false': Falso
       explanation: |
         Vue desenvuelve los refs que son propiedades de nivel superior del
         contexto de renderizado de la plantilla, por eso escribimos

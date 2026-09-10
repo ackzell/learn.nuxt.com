@@ -77,6 +77,28 @@ watch(
   },
 )
 
+// On the initial load the guide-change watch above can fire before the
+// WebContainer server is ready (preview.url is still '') and before the lazy
+// PanelPreviewClient has rendered its iframe, so the `?challenge=` param (and
+// dark mode) would never reach the iframe src — the html server would then
+// serve the page without the harness and the first check would time out.
+// Re-apply the params once the preview iframe is actually available.
+watch(
+  () => [preview.url, inner.value?.iframe],
+  () => {
+    if (preview.url && inner.value?.iframe) {
+      const currentSrc = inner.value.iframe.src
+      const url = new URL(preview.url)
+      url.searchParams.set('dark', colorMode.value === 'dark' ? 'true' : 'false')
+      const challengeFile = guide.currentGuide?.validation?.file
+      if (challengeFile)
+        url.searchParams.set('challenge', challengeFile)
+      if (currentSrc !== url.toString())
+        refreshIframe(true)
+    }
+  },
+)
+
 watch(
   () => colorMode.value,
   () => refreshIframe(true),
