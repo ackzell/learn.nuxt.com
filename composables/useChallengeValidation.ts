@@ -1,7 +1,9 @@
 import type { ChallengeCheckResult, SuiteResultPayload, ValidationStatus } from '~/types/validation'
 import { computed, ref } from 'vue'
+import { challengeDebug } from '~/composables/useChallengeDebug'
 import { challenges } from '~/db/challenges'
 import { useGuideStore } from '~/stores/guide'
+import { usePlaygroundStore } from '~/stores/playground'
 
 /**
  * Returns the live `contentDocument` of the playground preview iframe.
@@ -35,6 +37,7 @@ const computing = ref(false)
 function runChallengeSuite(file: string): Promise<SuiteResultPayload> {
   const opener = (window as any).__runChallengeSuite
   if (typeof opener !== 'function') {
+    challengeDebug('__runChallengeSuite not available on window')
     return Promise.resolve({
       id: '',
       success: false,
@@ -64,14 +67,28 @@ export function useChallengeValidation() {
 
   async function runValidation(): Promise<boolean> {
     const validation = guide.currentGuide?.validation
-    if (!validation?.file)
+    if (!validation?.file) {
+      challengeDebug('runValidation: no validation file, bailing')
       return false
+    }
 
+    challengeDebug('runValidation: starting', { file: validation.file, sessionName: guide.currentGuide?.sessionName })
     computing.value = true
     try {
       const outcome = await runChallengeSuite(validation.file)
-      if (outcome?.cancelled)
+      challengeDebug('runChallengeSuite resolved', {
+        success: outcome?.success,
+        passed: outcome?.passed,
+        empty: outcome?.empty,
+        cancelled: outcome?.cancelled,
+        testCount: outcome?.tests?.length,
+        tests: outcome?.tests?.map((t: ChallengeCheckResult) => ({ name: t.name, passed: t.passed })),
+      })
+
+      if (outcome?.cancelled) {
+        challengeDebug('runValidation: cancelled, returning false')
         return false
+      }
 
       const tests: ChallengeCheckResult[] = Array.isArray(outcome?.tests) ? outcome.tests : []
       results.value = tests
@@ -81,11 +98,24 @@ export function useChallengeValidation() {
       status.value = passedNow ? 'pass' : 'fail'
       attempts.value += 1
 
+      challengeDebug('runValidation: decision', { passedNow, attempts: attempts.value })
+
       const sessionName = guide.currentGuide?.sessionName
-      if (passedNow && sessionName)
-        await challenges.recordPass(sessionName)
-      else if (sessionName)
+      if (passedNow && sessionName) {
+        const playground = usePlaygroundStore()
+        const userFiles: Record<string, string> = {}
+        for (const key of Object.keys(guide.currentGuide?.files ?? {})) {
+          const vf = playground.files.get(key)
+          if (vf)
+            userFiles[key] = vf.read()
+        }
+        challengeDebug('recording PASS', { sessionName, fileCount: Object.keys(userFiles).length })
+        await challenges.recordPass(sessionName, Object.keys(userFiles).length > 0 ? userFiles : undefined)
+      }
+      else if (sessionName) {
+        challengeDebug('recording ATTEMPT (fail)', { sessionName })
         await challenges.recordAttempt(sessionName)
+      }
 
       return passedNow
     }

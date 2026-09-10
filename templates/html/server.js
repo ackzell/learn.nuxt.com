@@ -59,6 +59,9 @@ const INJECTED_SCRIPT = `
   setInterval(checkForReload, 1000);
 <\/script>`
 
+const INJECTED_CHALLENGE_SCRIPTS = `
+<script type="module" src="/__challenge__/harness.js"><\/script>`
+
 /**
  * Build a static HTTP server for the HTML template. The file watcher / live
  * reload is intentionally skipped during tests by leaving `watchFs = false` so
@@ -130,6 +133,17 @@ function createHtmlServer({ watchFs = true, cwd = process.cwd() } = {}) {
         content = content.includes('</head>')
           ? content.replace('</head>', `${INJECTED_STYLE}${INJECTED_SCRIPT}</head>`)
           : content + INJECTED_STYLE + INJECTED_SCRIPT
+
+        // When the host marks the preview as a challenge (?challenge=) we inject
+        // the validation harness at serve time. The harness self-initializes its
+        // run-suite listener on import, and the host sends the authored suite
+        // path with every run-suite call, so the authored pages never need to
+        // reference the runtime — the source the learner edits stays clean.
+        if (url.searchParams.get('challenge')) {
+          content = content.includes('</body>')
+            ? content.replace('</body>', `${INJECTED_CHALLENGE_SCRIPTS}</body>`)
+            : content + INJECTED_CHALLENGE_SCRIPTS
+        }
       }
 
       res.writeHead(200, { 'Content-Type': mime })

@@ -33,13 +33,14 @@ function liveQueryChallengeByName(sessionName: string): Observable<Challenge | u
  * suite (handled by the validation composable) — this method only records the
  * pass once that precondition is met.
  */
-async function recordPass(sessionName: string): Promise<void> {
+async function recordPass(sessionName: string, files?: Record<string, string>): Promise<void> {
   const existing = await getByName(sessionName)
   if (existing) {
     await db.challenges.update(existing.id, {
       status: 'passed',
       passedAt: new Date(),
       attempts: existing.attempts + 1,
+      ...(files ? { files } : {}),
     })
   }
   else {
@@ -48,19 +49,22 @@ async function recordPass(sessionName: string): Promise<void> {
       status: 'passed',
       passedAt: new Date(),
       attempts: 1,
+      ...(files ? { files } : {}),
     })
   }
 }
 
 /**
  * Persist a validation attempt regardless of outcome. Failed attempts create
- * a `failed` row (or bump attempts on an existing row) so attempt counts stay
- * meaningful even when the student never completes the challenge.
+ * a `failed` row (or flip an existing row back to `failed`) so attempt counts
+ * stay meaningful and a failed retake reverts the challenge to incomplete —
+ * mirroring how quizzes handle re-taking.
  */
 async function recordAttempt(sessionName: string): Promise<void> {
   const existing = await getByName(sessionName)
   if (existing) {
     await db.challenges.update(existing.id, {
+      status: 'failed',
       attempts: existing.attempts + 1,
     })
   }

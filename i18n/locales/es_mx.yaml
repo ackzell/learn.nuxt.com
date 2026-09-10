@@ -18,6 +18,8 @@ challenge:
   check-title: Revisa tu trabajo
   check: Revisar mi trabajo
   checking: Revisando…
+  retake: Volver a intentar
+  hide-solution: Ocultar solución
   pass: ¡Aprobado!
   fail: Casi — revisa los detalles abajo
   completed: Has completado este desafío

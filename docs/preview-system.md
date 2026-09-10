@@ -384,12 +384,14 @@ same postMessage protocol:
 How it runs:
 
 - The container starts the dev server (`pnpm run dev` → `node server.js` for the static
-  `html` template, Vite for `vue`/`vue-sass`); its entry (`src/main.ts` for
-  vue/vue-sass, `main.js` for `html`) imports the harness, which
-  self-initializes a `run-suite` message listener.
-- For static `html` challenges the host marks the preview with a `?challenge=` query
-  param pointing at the suite file, and `main.js` only loads the harness when that
-  param is present — plain HTML demos skip the harness entirely.
+  `html` template, Vite for `vue`/`vue-sass`). The runtime entry imports the harness,
+  which self-initializes a `run-suite` message listener.
+- The harness is **injected, never authored**: `vue`/`vue-sass` `src/main.ts` imports it
+  dynamically (and `main.js` does for templates that use it), while the static html
+  `server.js` injects a `<script>` tag for it into the served document — each only when
+  the preview URL carries a `?challenge=` query param pointing at the suite file.
+  Checkable pages therefore never reference the harness/suite in their source, so the
+  code the learner sees and edits stays clean; plain HTML demos skip the runtime entirely.
 - `ChallengeCheck` / the toolbar both go through `useChallengeValidation`, which calls
   `window.__runChallengeSuite(file)` (exposed by `PanelPreviewClient`) — a single shared
   path so all UI surfaces report consistent results.
@@ -406,6 +408,23 @@ How it runs:
 - static `html` → `__challenge__/suite.js` with an explicit failing TODO check so a
   fresh scaffold never silently passes.
 - `vue`/`vue-sass` → `__challenge__/suite.ts`, `ctx.mount`-compatible (Vue Test Utils).
+
+### Debugging the challenge flow
+
+Set `window.__challengeDebug = true` in the browser console before interacting with a
+challenge to enable the `[challenge-debug]` logs. These are emitted by the host-side
+challenge plumbing (`ChallengeCheck`, `useChallengeValidation`, `PanelPreview`,
+`PanelPreviewClient`) and cover:
+
+- the "Check my work" click (`check button clicked`)
+- the suite bridge lifecycle (`runSuite called`, `sending run-suite`,
+  `suite-result received`, timeouts, `cancelPendingSuites`, `markChallengeNotReady`,
+  iframe `onLoad`)
+- validation outcomes and IndexedDB writes (`runValidation: decision`,
+  `recording PASS`, `recording ATTEMPT (fail)`)
+
+The flag is independent of `window.__almostnodeDebug` (container/HMR debugging) — set
+either or both as needed.
 
 ## Quizzes
 

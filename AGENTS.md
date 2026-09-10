@@ -17,6 +17,10 @@ Nuxt 4 app for learning Vue. Runs interactive code playgrounds via almostnode (l
 Set `window.__almostnodeDebug = true` in browser console before mount.
 See `docs/preview-system.md` -> "Debugging the Container" section for full probe list.
 
+For the challenge validation flow, set `window.__challengeDebug = true` in the browser
+console to enable the `[challenge-debug]` logs. See `docs/preview-system.md` ->
+"Debugging the challenge flow".
+
 ## Commands
 
 - `pnpm dev` -- start dev server

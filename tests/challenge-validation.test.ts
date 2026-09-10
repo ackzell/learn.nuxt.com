@@ -16,6 +16,13 @@ vi.mock('~/stores/guide', () => ({
   useGuideStore: () => mocks.guideStoreRef,
 }))
 
+// The composable reads the container's files to persist the user's passing
+// solution (recordPass(sessionName, files)). Return an empty file map so the
+// host-side decision logic stays testable without a WebContainer.
+vi.mock('~/stores/playground', () => ({
+  usePlaygroundStore: () => ({ files: new Map() }),
+}))
+
 vi.mock('~/db/challenges', () => ({
   challenges: {
     recordPass: vi.fn(async () => { mocks.calls.pass += 1 }),

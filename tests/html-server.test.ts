@@ -68,6 +68,15 @@ describe('html static template', () => {
     expect(text).toContain('<script type="module" src="/main.js">')
   })
 
+  it('injects the challenge harness only when the request is marked ?challenge=', async () => {
+    const server = createHtmlServer({ watchFs: false, cwd: TPL })
+    const port = await listen(server)
+    const marked = await (await fetch(`http://127.0.0.1:${port}/?challenge=/__challenge__/suite.js`)).text()
+    expect(marked).toContain('<script type="module" src="/__challenge__/harness.js">')
+    const plain = await (await fetch(`http://127.0.0.1:${port}/`)).text()
+    expect(plain).not.toContain('/__challenge__/harness.js')
+  })
+
   it('returns 404 for missing files', async () => {
     const server = createHtmlServer({ watchFs: false, cwd: TPL })
     const port = await listen(server)

@@ -18,8 +18,10 @@ challenge:
   check-title: Check your work
   check: Check my work
   checking: Checking…
+  retake: Retake challenge
+  hide-solution: Hide solution
   pass: Passed!
-  fail: Not quite — see the details above
+  fail: Not quite — see the details below
   completed: You've completed this challenge
 quiz:
   check-title: Check your understanding
@@ -156,3 +158,4 @@ vue-live:
 magic-move:
   previous-step: Previous step
   next-step: Next step
+update-the-code-in-the-playground-and-click-check-my-work: Update the code in the playground and click "Check my work"

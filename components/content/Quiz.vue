@@ -208,7 +208,7 @@ function retake() {
             @change="toggleOption(q, opt.id)"
           >
           <div min-w-0>
-            <MDC class="amx-md option-md" :value="opt.label" tag="span" unwrap="p" />
+            <MDC class="amx-md option-md text-challenge-800 dark:text-challenge-400" :value="opt.label" tag="span" unwrap="p" />
           </div>
           <div
             mt-0.5 flex-none

@@ -37,7 +37,19 @@ export const useGuideStore = defineStore('guide', () => {
   const ignoredFiles = computed(() => transformGuideIgnoredFiles(currentGuide.value?.ignoredFiles))
 
   const buttonSolutionMessage = computed(() => currentGuide.value?.buttonSolutionMessage ? t(currentGuide.value.buttonSolutionMessage) : t('show-solution'))
-  const buttonResetMessage = computed(() => currentGuide.value?.buttonResetMessage ? t(currentGuide.value.buttonResetMessage) : t('reset-challenge'))
+  // On challenge lessons "Show solution" is a non-destructive peek, so its pair
+  // button hides the solution instead of resetting the editor. Plain lessons
+  // keep the legacy destructive starter⇄solution swap ("Reset challenge").
+  const buttonResetMessage = computed(() => currentGuide.value?.buttonResetMessage
+    ? t(currentGuide.value.buttonResetMessage)
+    : currentGuide.value?.validation
+      ? t('challenge.hide-solution')
+      : t('reset-challenge'))
+
+  // Snapshot of the container files taken right before a solution peek, keyed
+  // by sessionName so a stale peek can never be restored onto a different
+  // guide. Undefined unless a challenge-lesson peek is open.
+  let peekSnapshot: { key: string, files: Record<string, string> } | undefined
 
   watch(features, () => {
     if (features.value.fileTree === true) {
@@ -59,11 +71,16 @@ export const useGuideStore = defineStore('guide', () => {
       ui.showConsole = false
   })
 
-  async function mount(guide?: GuideMeta, withSolution = false) {
+  async function mount(guide?: GuideMeta, withSolution = false, filesOverride?: Record<string, string>) {
     const playgroundStore = getPlaygroundStore()
     if (!playgroundStore.webcontainer) {
       await playgroundStore.init()
     }
+
+    // Any reset/navigation mount (not a peek-restore) invalidates a stale
+    // solution snapshot so it can't be restored later.
+    if (!withSolution && filesOverride === undefined)
+      peekSnapshot = undefined
 
     function isTemplateType(value: unknown): value is TemplateType {
       return typeof value === 'string'
@@ -75,7 +92,7 @@ export const useGuideStore = defineStore('guide', () => {
       : 'html'
 
     await playgroundStore.mount({
-      ...guide?.files,
+      ...(filesOverride ?? guide?.files),
       ...withSolution ? guide?.solutions : {},
     }, templateName)
 
@@ -99,7 +116,34 @@ export const useGuideStore = defineStore('guide', () => {
   }
 
   async function toggleSolutions() {
-    await mount(currentGuide.value, !showingSolution.value)
+    const guide = currentGuide.value
+    const isChallenge = !!guide?.validation
+
+    // Plain lessons: legacy destructive swap between the lesson's starter and
+    // its reference solution ("update the lesson contents").
+    if (!isChallenge) {
+      await mount(guide, !showingSolution.value)
+      return
+    }
+
+    // Challenge lessons: "Show solution" is a non-destructive peek. Opening it
+    // snapshots the container; closing it restores the user's own code (their
+    // partial attempt or saved passing solution) — never the pristine starter.
+    const playgroundStore = getPlaygroundStore()
+    if (!showingSolution.value) {
+      const files: Record<string, string> = {}
+      for (const [filepath, vf] of playgroundStore.files)
+        files[filepath] = vf.read()
+      peekSnapshot = { key: guide?.sessionName ?? '', files }
+      await mount(guide, true)
+    }
+    else {
+      const files = peekSnapshot?.key === (guide?.sessionName ?? '') && Object.keys(peekSnapshot.files).length > 0
+        ? peekSnapshot.files
+        : undefined
+      peekSnapshot = undefined
+      await mount(guide, false, files)
+    }
   }
 
   function openEmbeddedDocs(url: string) {

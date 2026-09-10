@@ -2,6 +2,7 @@
 import type { LogPayload } from '~/types/console-output'
 import type { ClientInfo, FrameFunctions, ParentFunctions } from '~/types/rpc'
 import { createBirpc } from 'birpc'
+import { challengeDebug } from '~/composables/useChallengeDebug'
 
 const ui = useUiState()
 const colorMode = useColorMode()
@@ -51,11 +52,22 @@ async function runSuite(file: string, timeoutMs = 15_000): Promise<any> {
     tests: [{ name: 'suite', passed: false, message }],
   })
   const frame = iframe.value?.contentWindow
-  if (!frame)
+  challengeDebug('runSuite called', {
+    file,
+    frameExists: !!frame,
+    challengeReady,
+    challengeGeneration,
+    suiteHandlersPending: suiteHandlers.size,
+  })
+  if (!frame) {
+    challengeDebug('runSuite: no iframe contentWindow, returning fail')
     return fail('Preview is not ready yet.')
+  }
   if (!challengeReady) {
     const generation = challengeGeneration
+    challengeDebug('runSuite: waiting for challenge-ready (generation', generation, ')')
     const ready = await new Promise<boolean>((resolve) => {
+      let pingCount = 0
       let pingTimer: ReturnType<typeof setInterval> | undefined
       let timeoutTimer: ReturnType<typeof setTimeout> | undefined
       const onReady = (ready: boolean) => {
@@ -67,35 +79,49 @@ async function runSuite(file: string, timeoutMs = 15_000): Promise<any> {
         resolve(ready)
       }
       challengeReadyWaiters.add(onReady)
-      const ping = () => frame.postMessage({
-        source: 'nuxt-playground-parent-challenge',
-        payload: { method: 'challenge-ping' },
-      }, '*')
+      const ping = () => {
+        pingCount++
+        challengeDebug('challenge-ping #', pingCount)
+        frame.postMessage({
+          source: 'nuxt-playground-parent-challenge',
+          payload: { method: 'challenge-ping' },
+        }, '*')
+      }
       ping()
       pingTimer = setInterval(ping, 100)
-      timeoutTimer = setTimeout(() => onReady(false), Math.min(timeoutMs, 1500))
+      timeoutTimer = setTimeout(() => {
+        challengeDebug('challenge-ready timeout after 1.5s, falling back')
+        onReady(false)
+      }, Math.min(timeoutMs, 1500))
     })
-    if (generation !== challengeGeneration || iframe.value?.contentWindow !== frame)
+    if (generation !== challengeGeneration || iframe.value?.contentWindow !== frame) {
+      challengeDebug('runSuite: generation mismatch or iframe changed, returning fail')
       return fail('Preview challenge runtime is not ready yet.')
+    }
     // Older mounted harnesses do not support the readiness handshake. Fall
     // back to the original request protocol after the short grace period.
-    if (!ready)
+    if (!ready) {
+      challengeDebug('runSuite: harness did not respond to ping, assuming ready')
       challengeReady = true
+    }
   }
 
   return new Promise((resolve) => {
     const id = nextRequestId()
+    challengeDebug('sending run-suite', { id, file })
     let timer: ReturnType<typeof setTimeout> | undefined
     const entry: { resolve: (payload: any) => void, timer?: ReturnType<typeof setTimeout> } = {
       resolve: (payload) => {
         if (timer)
           clearTimeout(timer)
+        challengeDebug('suite-handler resolved', { id, passed: payload?.passed, cancelled: payload?.cancelled })
         resolve(payload)
       },
     }
     suiteHandlers.set(id, entry)
     timer = setTimeout(() => {
       suiteHandlers.delete(id)
+      challengeDebug('run-suite TIMEOUT after', timeoutMs, 'ms', { id })
       entry.resolve(fail('Timed out running the challenge suite.'))
     }, timeoutMs)
     entry.timer = timer
@@ -163,6 +189,7 @@ function handleSuiteMessage(event: MessageEvent) {
     return
   const { payload } = event.data
   if (payload?.method === 'challenge-ready') {
+    challengeDebug('received challenge-ready')
     challengeReady = true
     for (const resolve of challengeReadyWaiters)
       resolve(true)
@@ -174,8 +201,11 @@ function handleSuiteMessage(event: MessageEvent) {
   if (typeof payload.id !== 'string')
     return
   const handler = suiteHandlers.get(payload.id)
-  if (!handler)
+  if (!handler) {
+    challengeDebug('suite-result handler NOT FOUND for id:', payload.id, '(stale?)')
     return // stale/unknown request id — ignore
+  }
+  challengeDebug('suite-result received, resolving handler', { id: payload.id, passed: payload.passed })
   suiteHandlers.delete(payload.id)
   handler.resolve(payload)
 }
@@ -218,6 +248,7 @@ function syncColorMode() {
  * immediate response instead of hanging for 15 s after an iframe refresh.
  */
 function cancelPendingSuites() {
+  challengeDebug('cancelPendingSuites', { waiters: challengeReadyWaiters.size, pending: suiteHandlers.size })
   for (const resolve of challengeReadyWaiters)
     resolve(false)
   challengeReadyWaiters.clear()
@@ -237,6 +268,7 @@ function cancelPendingSuites() {
 }
 
 function markChallengeNotReady() {
+  challengeDebug('markChallengeNotReady', { was: challengeReady, generation: challengeGeneration, next: challengeGeneration + 1 })
   challengeReady = false
   challengeGeneration += 1
 }
@@ -274,6 +306,7 @@ async function checkHmrBridge() {
 }
 
 function onLoad() {
+  challengeDebug('iframe onLoad', { challengeReady, challengeGeneration })
   syncColorMode()
   checkHmrBridge()
 }

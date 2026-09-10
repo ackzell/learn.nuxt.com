@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { challengeDebug } from '~/composables/useChallengeDebug'
+
 const preview = usePreviewStore()
 const guide = useGuideStore()
 const colorMode = useColorMode()
@@ -38,6 +40,7 @@ syncRef(
 )
 
 function refreshIframe(force = false) {
+  challengeDebug('refreshIframe', { force, currentSrc: inner.value?.iframe?.src, nextUrl: preview.url })
   inner.value?.cancelPendingSuites?.()
   preview.updateUrl()
   if (preview.url && inner.value?.iframe) {
@@ -48,8 +51,12 @@ function refreshIframe(force = false) {
       const challengeFile = guide.currentGuide?.validation?.file
       if (challengeFile)
         url.searchParams.set('challenge', challengeFile)
+      challengeDebug('refreshIframe: setting iframe src', { url: url.toString(), challengeFile })
       inner.value.markChallengeNotReady?.()
       inner.value.iframe.src = url.toString()
+    }
+    else {
+      challengeDebug('refreshIframe: src unchanged, skipping reload')
     }
     inputUrl.value = preview.location.fullPath
   }

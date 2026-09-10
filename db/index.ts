@@ -30,6 +30,8 @@ export interface Challenge {
   passedAt?: Date
   /** Running count of validation attempts (passes and failures). */
   attempts: number
+  /** File contents at the moment the challenge was passed (key → content). */
+  files?: Record<string, string>
 }
 
 export type QuizStatus = 'passed' | 'failed'
@@ -66,6 +68,13 @@ db.version(2).stores({
 })
 
 db.version(3).stores({
+  sessions: '++id, name, createdAt, updatedAt',
+  snapshots: '++id, sessionId, files, createdAt, type, message',
+  challenges: '++id, sessionName, status, passedAt, attempts',
+  quizzes: '++id, sessionName, status, passedAt, attempts, bestScore',
+})
+
+db.version(4).stores({
   sessions: '++id, name, createdAt, updatedAt',
   snapshots: '++id, sessionId, files, createdAt, type, message',
   challenges: '++id, sessionName, status, passedAt, attempts',

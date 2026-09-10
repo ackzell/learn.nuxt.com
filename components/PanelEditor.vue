@@ -74,6 +74,7 @@ function syncFiles(playground: ReturnType<typeof usePlaygroundStore>) {
   files.value = Array
     .from(playground.files.values())
     .filter(file => !isFileIgnored(file.filepath, guide.ignoredFiles))
+    .filter(file => !file.filepath.startsWith('__challenge__/'))
 }
 
 // Initialize data only when component is mounted
