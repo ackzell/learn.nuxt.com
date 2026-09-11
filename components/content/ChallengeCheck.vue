@@ -4,6 +4,7 @@ import { useChallengeProgress } from '~/composables/useChallengeProgress'
 import { useChallengeValidation } from '~/composables/useChallengeValidation'
 import { loadGuideMeta } from '~/composables/useGuideMeta'
 import { challenges } from '~/db/challenges'
+import { getChallengeSuiteFile } from '~/types/guides'
 
 const guide = useGuideStore()
 const route = useRoute()
@@ -20,7 +21,7 @@ const {
 const progress = useChallengeProgress()
 
 const hasValidation = computed(() =>
-  !!guide.currentGuide?.validation?.file,
+  !!guide.currentGuide?.validation,
 )
 
 const completed = computed(() =>
@@ -34,7 +35,7 @@ async function check() {
     hasValidation: hasValidation.value,
     computing: computing.value,
     completed: completed.value,
-    file: guide.currentGuide?.validation?.file,
+    file: getChallengeSuiteFile(guide.currentGuide?.template),
     sessionName: guide.currentGuide?.sessionName,
   })
   // A peek at the solution must never be checked — restore the user's own code

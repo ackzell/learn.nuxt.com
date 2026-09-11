@@ -11,6 +11,7 @@ import yaml from 'js-yaml'
 import { join, relative, resolve } from 'pathe'
 import { TEMPLATE_TYPES } from '~/types/guides'
 import { isBinaryFile } from '../lib/binary'
+import { generateChallengeSuiteFile } from '../lib/challenge-banking'
 import { validateQuizStrings, validateQuizStructure } from '../lib/quiz-validation'
 
 export default defineNuxtModule({
@@ -153,6 +154,33 @@ export default defineNuxtModule({
         }
       })
       nuxt.hook('close', () => quizWatcher.close())
+
+      // Watch the challenges/ bank so suite/string edits invalidate the
+      // .template/index.ts transforms that bake the generated suites (mirrors
+      // the quizzes watcher). The transform also registers the bank files via
+      // addWatchFile; this is a belt-and-braces invalidation so HMR re-runs
+      // the bake even for lessons whose transform graph was never requested.
+      const challengeWatcher = watch(
+        join(process.cwd(), 'challenges'),
+        { ignoreInitial: true },
+      )
+      challengeWatcher.on('all', () => {
+        if (!viteServer)
+          return
+        const invalidate = (graph: any) => {
+          if (!graph?.urlToModuleMap)
+            return
+          for (const [url, mod] of graph.urlToModuleMap) {
+            if (url.includes('.template'))
+              graph.invalidateModule(mod)
+          }
+        }
+        invalidate(viteServer.moduleGraph)
+        if ((viteServer as any).environments?.ssr) {
+          invalidate((viteServer as any).environments.ssr.moduleGraph)
+        }
+      })
+      nuxt.hook('close', () => challengeWatcher.close())
     }
 
     // Default Templates
@@ -246,10 +274,19 @@ export default defineNuxtModule({
           }
         }
 
+        // Challenge lessons reference a shared bank (validation.challenge);
+        // generate the mounted suite from it, baking in locale strings.
+        const generatedFiles = await generateChallengeSuiteFile({
+          code,
+          sourceId: id,
+          files,
+          addWatchFile: file => this.addWatchFile(file),
+        })
+
         return {
           code: [
             code,
-            `meta.files = ${JSON.stringify(files)}`,
+            `meta.files = ${JSON.stringify(generatedFiles)}`,
             `meta.solutions = ${JSON.stringify(solutions)}`,
             '',
           ].join('\n'),

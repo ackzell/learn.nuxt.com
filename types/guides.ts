@@ -12,6 +12,27 @@ export const TEMPLATE_TYPES = [
 
 export type TemplateType = typeof TEMPLATE_TYPES[number]
 
+/**
+ * The challenge suite module path in the container, per template. The lesson's
+ * `validation` no longer carries a path — the template decides it, so a suite
+ * can never drift from the runtime that serves it (html is static and needs
+ * plain JS; vue templates import TypeScript under Vite).
+ */
+export const CHALLENGE_SUITE_FILE: Record<TemplateType, string> = {
+  'html': '/__challenge__/suite.js',
+  'vue': '/__challenge__/suite.ts',
+  'vue-sass': '/__challenge__/suite.ts',
+}
+
+/**
+ * Resolves the challenge suite path for a template. When the template is
+ * missing it falls back to the html suite, matching the mount default in
+ * `stores/guide.ts`.
+ */
+export function getChallengeSuiteFile(template?: TemplateType): string {
+  return template ? CHALLENGE_SUITE_FILE[template] : CHALLENGE_SUITE_FILE.html
+}
+
 export interface GuideMeta {
   features?: PlaygroundFeatures
   startingFile?: string

@@ -1,4 +1,7 @@
 {
   // https://nuxt.com/docs/guide/concepts/typescript
-  "extends": "./.nuxt/tsconfig.json"
+  "extends": "./.nuxt/tsconfig.json",
+  // Challenge bank suites are typed/checked against challenges/tsconfig.json
+  // (bare "harness" authoring module), not the Nuxt app graph.
+  "exclude": ["challenges"]
 }

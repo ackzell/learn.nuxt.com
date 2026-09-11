@@ -1,0 +1,11 @@
+basics-challenge:
+  checks:
+    mounts-app:
+      name: Mounts a Vue app
+      hint: Expected Vue to be mounted with createApp().mount()
+    renders-greeting:
+      name: Renders the greeting
+      hint: Expected "Hola Vue!" to be rendered on the page
+    shows-version:
+      name: Shows the Vue version
+      hint: Expected a Vue version number (like 3.5.32) to be shown

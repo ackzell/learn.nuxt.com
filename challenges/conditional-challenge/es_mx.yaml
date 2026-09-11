@@ -1,0 +1,14 @@
+conditional-challenge:
+  checks:
+    uses-v-if:
+      name: Usa v-if
+      hint: Se esperaba que la directiva v-if se usara en App.vue
+    uses-v-else-if:
+      name: Usa v-else-if
+      hint: Se esperaba que la directiva v-else-if se usara en App.vue
+    uses-v-else:
+      name: Usa v-else
+      hint: Se esperaba que la directiva v-else se usara en App.vue
+    renders-current-branch:
+      name: Muestra solo la rama correspondiente
+      hint: Se esperaba que solo se mostrara la rama que coincide con el nivel actual

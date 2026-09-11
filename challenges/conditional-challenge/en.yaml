@@ -1,0 +1,14 @@
+conditional-challenge:
+  checks:
+    uses-v-if:
+      name: Uses v-if
+      hint: Expected the v-if directive to be used in App.vue
+    uses-v-else-if:
+      name: Uses v-else-if
+      hint: Expected the v-else-if directive to be used in App.vue
+    uses-v-else:
+      name: Uses v-else
+      hint: Expected the v-else directive to be used in App.vue
+    renders-current-branch:
+      name: Shows only the matching branch
+      hint: Expected only the branch matching the current level to be shown

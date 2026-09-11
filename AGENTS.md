@@ -21,6 +21,15 @@ For the challenge validation flow, set `window.__challengeDebug = true` in the b
 console to enable the `[challenge-debug]` logs. See `docs/preview-system.md` ->
 "Debugging the challenge flow".
 
+## Challenge authoring
+
+Checkable challenges are authored once in a shared bank at `challenges/<id>/`
+(`suite.ts` + per-locale `en.yaml`/`es_mx.yaml`) and referenced by lesson via
+`validation: { challenge: '<id>' }`; the mounted suite is generated at build
+time. See `docs/challenge-banking.md` for the full authoring model, and
+`docs/preview-system.md` -> "Challenge Validation Suites" for how suites
+execute in the preview.
+
 ## Commands
 
 - `pnpm dev` -- start dev server

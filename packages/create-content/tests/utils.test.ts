@@ -1,29 +1,28 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { mkdtempSync } from 'node:fs'
+import { join } from 'node:path'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import {
-  slugify,
-  padNumber,
-  parseDirNumber,
-  generateIndexTs,
-  generateChallengeIndexTs,
-  getStubFileName,
-  getStubContent,
-  getChapterIndexMd,
-  getLessonIndexMd,
-  getNextNumber,
-  getLocales,
-  getChapters,
-  getChaptersFlat,
-  getLessons,
-  getAllLessonsFlat,
-  hasTemplateDir,
-  hasFilesDir,
   copyDir,
   countFiles,
+  generateChallengeIndexTs,
+  generateIndexTs,
+  getAllLessonsFlat,
+  getChapterIndexMd,
+  getChapters,
+  getChaptersFlat,
+  getLessonIndexMd,
+  getLessons,
+  getLocales,
+  getNextNumber,
+  getStubContent,
+  getStubFileName,
+  hasFilesDir,
+  hasTemplateDir,
+  padNumber,
+  parseDirNumber,
+  slugify,
   writeChallengeSuite,
 } from '../src/utils.ts'
 
@@ -80,44 +79,46 @@ describe('parseDirNumber', () => {
 describe('generateIndexTs', () => {
   it('generates docs-only config', () => {
     const result = generateIndexTs('none', 'test')
-    expect(result).toContain("defaultLayout: 'docs'")
+    expect(result).toContain('defaultLayout: \'docs\'')
     expect(result).not.toContain('template:')
   })
 
   it('generates html config', () => {
     const result = generateIndexTs('html', 'test-lesson')
-    expect(result).toContain("template: 'html'")
-    expect(result).toContain("startingFile: 'index.html'")
-    expect(result).toContain("sessionName: 'test-lesson'")
+    expect(result).toContain('template: \'html\'')
+    expect(result).toContain('startingFile: \'index.html\'')
+    expect(result).toContain('sessionName: \'test-lesson\'')
   })
 
   it('generates vue config', () => {
     const result = generateIndexTs('vue', 'test-lesson')
-    expect(result).toContain("template: 'vue'")
-    expect(result).toContain("startingFile: 'src/App.vue'")
-    expect(result).toContain("sessionName: 'test-lesson'")
+    expect(result).toContain('template: \'vue\'')
+    expect(result).toContain('startingFile: \'src/App.vue\'')
+    expect(result).toContain('sessionName: \'test-lesson\'')
   })
 
   it('generates vue-sass config', () => {
     const result = generateIndexTs('vue-sass', 'sass-lesson')
-    expect(result).toContain("template: 'vue-sass'")
-    expect(result).toContain("sessionName: 'sass-lesson'")
+    expect(result).toContain('template: \'vue-sass\'')
+    expect(result).toContain('sessionName: \'sass-lesson\'')
   })
 })
 
 describe('generateChallengeIndexTs', () => {
-  it('references a .js suite for static html', () => {
-    const result = generateChallengeIndexTs('html', 'my-challenge')
-    expect(result).toContain("template: 'html'")
-    expect(result).toContain("startingFile: 'index.html'")
-    expect(result).toContain("file: '/__challenge__/suite.js'")
+  it('references the challenge bank for static html', () => {
+    const result = generateChallengeIndexTs('html', 'my-challenge', 'my-bank')
+    expect(result).toContain('template: \'html\'')
+    expect(result).toContain('startingFile: \'index.html\'')
+    expect(result).toContain('challenge: \'my-bank\'')
+    expect(result).not.toContain('suite.')
   })
 
-  it('references a .ts suite for vue templates', () => {
-    const result = generateChallengeIndexTs('vue', 'my-challenge')
-    expect(result).toContain("template: 'vue'")
-    expect(result).toContain("startingFile: 'src/App.vue'")
-    expect(result).toContain("file: '/__challenge__/suite.ts'")
+  it('references the challenge bank for vue templates', () => {
+    const result = generateChallengeIndexTs('vue', 'my-challenge', 'my-bank')
+    expect(result).toContain('template: \'vue\'')
+    expect(result).toContain('startingFile: \'src/App.vue\'')
+    expect(result).toContain('challenge: \'my-bank\'')
+    expect(result).not.toContain('suite.')
   })
 })
 
@@ -175,13 +176,13 @@ describe('filesystem operations', () => {
     process.chdir(tmpDir)
   })
 
+  afterEach(() => {
+    process.chdir(tmpDir)
+  })
+
   afterAll(() => {
     process.chdir(cwd)
     rmSync(tmpDir, { recursive: true, force: true })
-  })
-
-  afterEach(() => {
-    process.chdir(tmpDir)
   })
 
   describe('getNextNumber', () => {
@@ -341,25 +342,37 @@ describe('filesystem operations', () => {
   })
 
   describe('writeChallengeSuite', () => {
-    it('writes a .js suite with an explicit failing TODO for static html', () => {
-      const dir = join(tmpDir, 'challenge-html')
-      mkdirSync(dir, { recursive: true })
-      writeChallengeSuite(dir, 'html')
-      const file = join(dir, '.template', 'files', '__challenge__', 'suite.js')
-      const content = readFileSync(file, 'utf-8')
-      expect(content).toContain("from './harness.js'")
-      expect(content).toContain('TODO: write a real check')
-      expect(content).toContain('expect(doc.querySelector')
+    const bankDir = (id: string) => join(tmpDir, 'challenges', id)
+
+    it('scaffolds a typed bank suite with an explicit failing TODO', () => {
+      writeChallengeSuite('stub-bank-html')
+      const dir = bankDir('stub-bank-html')
+      const suite = readFileSync(join(dir, 'suite.ts'), 'utf-8')
+      expect(suite).toContain('from \'harness\'')
+      expect(suite).toContain('todo-write-a-real-check')
+      expect(suite).toContain('expect(doc.querySelector')
     })
 
-    it('writes a .ts suite with ctx.mount for vue templates', () => {
-      const dir = join(tmpDir, 'challenge-vue')
-      mkdirSync(dir, { recursive: true })
-      writeChallengeSuite(dir, 'vue')
-      const file = join(dir, '.template', 'files', '__challenge__', 'suite.ts')
-      const content = readFileSync(file, 'utf-8')
-      expect(content).toContain("from './harness'")
-      expect(content).toContain('TODO: write a real check')
+    it('writes locale string stubs keyed by the TODO check id', () => {
+      writeChallengeSuite('stub-bank-strings')
+      const dir = bankDir('stub-bank-strings')
+      for (const locale of ['en.yaml', 'es_mx.yaml']) {
+        const strings = readFileSync(join(dir, locale), 'utf-8')
+        expect(strings).toContain('stub-bank-strings:')
+        expect(strings).toContain('todo-write-a-real-check:')
+        expect(strings).toContain('name:')
+        expect(strings).toContain('hint:')
+      }
+    })
+
+    it('is idempotent — does not overwrite an existing bank', () => {
+      writeChallengeSuite('stub-bank-keep')
+      const dir = bankDir('stub-bank-keep')
+      const original = readFileSync(join(dir, 'suite.ts'), 'utf-8')
+      writeFileSync(join(dir, 'extra.txt'), 'custom')
+      writeChallengeSuite('stub-bank-keep')
+      expect(readFileSync(join(dir, 'suite.ts'), 'utf-8')).toBe(original)
+      expect(existsSync(join(dir, 'extra.txt'))).toBe(true)
     })
   })
 })

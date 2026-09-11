@@ -1,10 +1,14 @@
 import type { Locale } from './utils'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { autocomplete, confirm, isCancel, select, spinner, text } from '@clack/prompts'
+import { red } from 'kolorist'
 import {
   copyDir,
   generateChallengeIndexTs,
   generateIndexTs,
-  getChaptersFlat,
   getChallengeIndexMd,
+  getChaptersFlat,
   getContentDir,
   getLessonIndexMd,
   getLessons,
@@ -17,10 +21,6 @@ import {
   slugify,
   writeChallengeSuite,
 } from './utils'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { autocomplete, confirm, isCancel, select, spinner, text } from '@clack/prompts'
-import { red } from 'kolorist'
 
 export const TEMPLATE_OPTIONS = [
   { value: 'vue', label: 'Vue SFC', hint: 'vue' },
@@ -35,6 +35,7 @@ export interface LessonOptions {
   title?: string
   template?: string
   isChallenge?: boolean
+  bankId?: string
 }
 
 export async function createLesson(options?: LessonOptions) {
@@ -131,6 +132,21 @@ export async function createLesson(options?: LessonOptions) {
   const lessonDir = join(getContentDir(), resolvedLocale, chapter, dirName)
   const sessionName = slug
 
+  const bankId = isChallenge
+    ? options?.bankId ?? await text({
+      message: 'Challenge bank id (challenges/<id>/ referenced by validation.challenge):',
+      initialValue: sessionName,
+      validate: (v) => {
+        if (!v || !v.trim())
+          return 'Bank id cannot be empty'
+        if (/[\s/]/.test(v))
+          return 'Must be a single path segment (no spaces or slashes)'
+      },
+    })
+    : undefined
+  if (isCancel(bankId))
+    return
+
   const s = spinner()
   s.start('Creating lesson...')
 
@@ -145,7 +161,7 @@ export async function createLesson(options?: LessonOptions) {
   writeFileSync(
     join(templateDir, 'index.ts'),
     isChallenge
-      ? generateChallengeIndexTs(template, sessionName)
+      ? generateChallengeIndexTs(template, sessionName, bankId!)
       : generateIndexTs(template, sessionName),
   )
 
@@ -157,7 +173,7 @@ export async function createLesson(options?: LessonOptions) {
   }
 
   if (isChallenge)
-    writeChallengeSuite(lessonDir, template)
+    writeChallengeSuite(bankId!)
 
   s.stop(`Created lesson: ${resolvedLocale}/${chapter}/${dirName}/`)
 

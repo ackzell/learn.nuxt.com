@@ -183,8 +183,9 @@ export async function runSuiteModule(mod: any): Promise<{ passed: boolean, tests
   const ctx: CheckContext = { doc: document, mount }
 
   // Shape A: module authored via checks()/check()
-  if (mod?.__amxChecks && typeof mod.run === 'function') {
-    const tests = await mod.run(ctx)
+  const checksObj = mod?.__amxChecks ? mod : mod?.default
+  if (checksObj?.__amxChecks && typeof checksObj.run === 'function') {
+    const tests = await checksObj.run(ctx)
     if (tests.length === 0) {
       return {
         passed: false,

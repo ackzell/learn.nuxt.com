@@ -4,6 +4,7 @@ import { challengeDebug } from '~/composables/useChallengeDebug'
 import { challenges } from '~/db/challenges'
 import { useGuideStore } from '~/stores/guide'
 import { usePlaygroundStore } from '~/stores/playground'
+import { getChallengeSuiteFile } from '~/types/guides'
 
 /**
  * Returns the live `contentDocument` of the playground preview iframe.
@@ -67,15 +68,17 @@ export function useChallengeValidation() {
 
   async function runValidation(): Promise<boolean> {
     const validation = guide.currentGuide?.validation
-    if (!validation?.file) {
-      challengeDebug('runValidation: no validation file, bailing')
+    if (!validation) {
+      challengeDebug('runValidation: no validation, bailing')
       return false
     }
 
-    challengeDebug('runValidation: starting', { file: validation.file, sessionName: guide.currentGuide?.sessionName })
+    const file = getChallengeSuiteFile(guide.currentGuide?.template)
+
+    challengeDebug('runValidation: starting', { file, sessionName: guide.currentGuide?.sessionName })
     computing.value = true
     try {
-      const outcome = await runChallengeSuite(validation.file)
+      const outcome = await runChallengeSuite(file)
       challengeDebug('runChallengeSuite resolved', {
         success: outcome?.success,
         passed: outcome?.passed,

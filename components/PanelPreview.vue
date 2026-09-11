@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { challengeDebug } from '~/composables/useChallengeDebug'
+import { getChallengeSuiteFile } from '~/types/guides'
 
 const preview = usePreviewStore()
 const guide = useGuideStore()
@@ -26,7 +27,7 @@ const inner = ref<{
   markChallengeNotReady?: () => void
 }>()
 
-const hasChallenge = computed(() => !!guide.currentGuide?.validation?.file)
+const hasChallenge = computed(() => !!guide.currentGuide?.validation)
 
 // Shared validation state/composable — drives both the challenge widget and
 // this toolbar button so they report identical results.
@@ -48,7 +49,7 @@ function refreshIframe(force = false) {
       const colorMode = useColorMode()
       const url = new URL(preview.url)
       url.searchParams.set('dark', colorMode.value === 'dark' ? 'true' : 'false')
-      const challengeFile = guide.currentGuide?.validation?.file
+      const challengeFile = guide.currentGuide?.validation ? getChallengeSuiteFile(guide.currentGuide?.template) : undefined
       if (challengeFile)
         url.searchParams.set('challenge', challengeFile)
       challengeDebug('refreshIframe: setting iframe src', { url: url.toString(), challengeFile })
@@ -90,7 +91,7 @@ watch(
       const currentSrc = inner.value.iframe.src
       const url = new URL(preview.url)
       url.searchParams.set('dark', colorMode.value === 'dark' ? 'true' : 'false')
-      const challengeFile = guide.currentGuide?.validation?.file
+      const challengeFile = guide.currentGuide?.validation ? getChallengeSuiteFile(guide.currentGuide?.template) : undefined
       if (challengeFile)
         url.searchParams.set('challenge', challengeFile)
       if (currentSrc !== url.toString())

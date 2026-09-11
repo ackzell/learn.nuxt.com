@@ -43,7 +43,7 @@ beforeEach(() => {
   mocks.calls.attempt = 0
   mocks.guideStoreRef.currentGuide = {
     sessionName: 'basics-challenge',
-    validation: { file: '/__challenge__/suite.js' },
+    validation: {},
   }
 })
 
@@ -139,5 +139,20 @@ describe('useChallengeValidation — host UI path', () => {
     v.reset()
     expect(v.status.value).toBe('idle')
     expect(v.results.value).toHaveLength(0)
+  })
+
+  it('derives the suite file from the template (defaults to html)', async () => {
+    setSuite({ id: 'file-1', success: true, passed: true, tests: [{ name: 'a', passed: true, message: '' }] })
+    const v = useChallengeValidation()
+    await v.runValidation()
+    expect((globalThis as any).window.__runChallengeSuite).toHaveBeenCalledWith('/__challenge__/suite.js')
+  })
+
+  it('derives the suite file from the template (vue)', async () => {
+    setSuite({ id: 'file-2', success: true, passed: true, tests: [{ name: 'a', passed: true, message: '' }] })
+    mocks.guideStoreRef.currentGuide = { ...mocks.guideStoreRef.currentGuide, template: 'vue' }
+    const v = useChallengeValidation()
+    await v.runValidation()
+    expect((globalThis as any).window.__runChallengeSuite).toHaveBeenCalledWith('/__challenge__/suite.ts')
   })
 })

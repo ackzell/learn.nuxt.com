@@ -17,9 +17,16 @@ export interface ChallengeCheckResult {
 }
 
 /**
- * A checkable challenge's suite. The suite lives as a module (authored with
- * the `check()`/`checks()`/`expect()` harness helpers) inside the challenge's
- * `.template/files/__challenge__/suite.*`.
+ * A checkable challenge's suite. The suite is a module authored with the
+ * `check()`/`checks()`/`expect()` harness helpers. It is authored once in the
+ * `challenges/<id>/` bank and, when `challenge` is set, generated into the
+ * lesson's `__challenge__/suite.*` at build time with per-locale names/hints
+ * baked in.
+ *
+ * The suite module path is derived from the lesson's template (see
+ * `getChallengeSuiteFile` in `types/guides.ts`): `html` templates always get
+ * plain `.js` (static server, no build step), `vue`/`vue-sass` get `.ts`
+ * (imported under Vite).
  *
  * Suites run inside the WebContainer on the same origin as the preview iframe
  * so they can assert against the live DOM:
@@ -29,8 +36,12 @@ export interface ChallengeCheckResult {
  *     (`server.js`, no Vite) against the live document (`ctx.doc` only).
  */
 export interface ChallengeSuite {
-  /** Path of the suite module in the container, e.g. '/__challenge__/suite.ts'. */
-  file: string
+  /**
+   * Optional shared bank id (`challenges/<id>/`). When set, the build-time
+   * template loader generates the mounted `__challenge__/suite.*` from the
+   * bank's suite + locale strings instead of the lesson shipping its own file.
+   */
+  challenge?: string
 }
 
 /**

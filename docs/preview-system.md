@@ -317,23 +317,33 @@ When a `.template/files/` file changes in development:
 
 ## Challenge Validation Suites
 
-Checkable challenges declare a validation suite in their `.template/index.ts`:
+Checkable challenges are **authored once** in a shared bank and referenced by
+lesson. The lesson's `.template/index.ts` sets the bank id; the mounted suite
+file is **generated at build time** from the bank, with the lesson locale's
+display strings baked in:
 
 ```ts
 export const meta: GuideMeta = {
-  template: 'html',      // or 'vue' / 'vue-sass'
+  template: 'vue', // or 'html' / 'vue-sass'
   validation: {
-    file: '/__challenge__/suite.js',  // .js for static html, .ts for vue
+    challenge: 'conditional-challenge', // bank id, not a suite file
   },
 }
 ```
 
-Suites are authored with a **shared vocabulary** — `check()` / `checks()` / `expect()` —
-and are executed inside the WebContainer on the same origin as the preview iframe so
-they can assert against the live DOM:
+The suite module path is **derived from the lesson's `template`**
+(`getChallengeSuiteFile` in `types/guides.ts`) — `/__challenge__/suite.js` for
+static html, `/__challenge__/suite.ts` for vue/vue-sass. It is never authored.
+
+The full authoring model — bank layout, authoring DSL, localization, and the
+build-time bake pipeline — lives in
+[`docs/challenge-banking.md`](challenge-banking.md).
+
+Suites are executed inside the WebContainer on the same origin as the preview
+iframe so they can assert against the live DOM:
 
 ```ts
-import { check, checks, expect } from './harness.js'   // './harness' for Vue
+import { check, checks, expect } from 'harness' // bare import, baked per template
 
 export default checks([
   check('Renders the greeting', {
@@ -343,15 +353,6 @@ export default checks([
   }),
 ])
 ```
-
-### Shared authoring DSL
-
-- `expect(actual)` — matchers (`toBe`, `toEqual`, `toBeTruthy`, `toContain`,
-  `toMatch`, `toBeGreaterThan`, `not`, …). Throws a readable message on failure.
-- `check(name, spec)` / `checks([...])` — the preferred, explicit form. Returns a
-  suite whose `run(ctx)` produces the shared result shape.
-- `describe` / `it` / `test` — minimal, **corrected** shims for migrating existing
-  suites. The empty-suite rule applies here too.
 
 ### Result shape & message protocol
 
@@ -370,16 +371,18 @@ same postMessage protocol:
 
 ### Template-specific runtimes & `ctx`
 
-| Template | Runner | `ctx.doc` | `ctx.mount` | Suite language |
-|----------|--------|-----------|-------------|----------------|
-| `vue` / `vue-sass` | Vite dev server + Vue Test Utils | ✅ | ✅ (`@vue/test-utils`) | `.ts` |
-| `html` | **static `server.js` — no Vite, no npm deps** | ✅ | ❌ (`undefined`) | `.js` |
+| Template           | Runner                                        | `ctx.doc` | `ctx.mount`            | Suite language |
+| ------------------ | --------------------------------------------- | --------- | ---------------------- | -------------- |
+| `vue` / `vue-sass` | Vite dev server + Vue Test Utils              | ✅        | ✅ (`@vue/test-utils`) | `.ts`          |
+| `html`             | **static `server.js` — no Vite, no npm deps** | ✅        | ❌ (`undefined`)       | `.js`          |
 
 - `vue` / `vue-sass`: run under Vite, import the `.ts` suite (Vite transpiles), and can
-  mount components with Vue Test Utils via `ctx.mount`.
+  mount components with Vue Test Utils via `ctx.mount`. They can also assert against the
+  learner's source with Vite's `*.vue?raw` imports (see `docs/challenge-banking.md`).
 - `html` (static): a dependency-free static server (`node server.js`, no
-  `vite`/`@vitest/expect`/`chai` installs). Suites are authored as **plain JavaScript**
-  (`.js`) because browsers can't natively import TypeScript. Only `ctx.doc` is available.
+  `vite`/`@vitest/expect`/`chai` installs). Bank suites are authored as TypeScript and
+  transpiled to **plain `.js`** at bake time, because the browser can't natively import
+  TypeScript. Only `ctx.doc` is available.
 
 How it runs:
 
@@ -387,27 +390,32 @@ How it runs:
   `html` template, Vite for `vue`/`vue-sass`). The runtime entry imports the harness,
   which self-initializes a `run-suite` message listener.
 - The harness is **injected, never authored**: `vue`/`vue-sass` `src/main.ts` imports it
-  dynamically (and `main.js` does for templates that use it), while the static html
-  `server.js` injects a `<script>` tag for it into the served document — each only when
-  the preview URL carries a `?challenge=` query param pointing at the suite file.
-  Checkable pages therefore never reference the harness/suite in their source, so the
-  code the learner sees and edits stays clean; plain HTML demos skip the runtime entirely.
+  dynamically on the first challenge postMessage, while the static html `server.js`
+  injects a `<script>` tag for it into the served document when the preview URL carries a
+  `?challenge=` query param. Checkable pages therefore never reference the harness/suite
+  in their source, so the code the learner sees and edits stays clean; plain HTML demos
+  skip the runtime entirely.
 - `ChallengeCheck` / the toolbar both go through `useChallengeValidation`, which calls
   `window.__runChallengeSuite(file)` (exposed by `PanelPreviewClient`) — a single shared
-  path so all UI surfaces report consistent results.
+  path so all UI surfaces report consistent results. The `file` is derived from the
+  lesson's `template` via `getChallengeSuiteFile` and sent in the `run-suite` message.
 - The harness `import()`s the suite (Vite transpiles `.ts`; the static server serves
-  `.js` natively), runs it against the live same-origin `document`, and replies with the
-  shared `suite-result` shape (including the request id).
+  `.js` natively), **unwraps the ESM `.default` namespace** (`export default checks(...)`
+  works), runs it against the live same-origin `document`, and replies with the shared
+  `suite-result` shape (including the request id).
 - `PanelPreviewClient` resolves the pending promise by id, and the UI renders pass/fail
   per check. Completion is recorded only for a non-empty, fully-passing suite (see the
   `db/challenges` layer, which filters by `status === 'passed'`).
 
 ### Scaffolding challenges
 
-`packages/create-content` (`content` CLI) generates a `.template` for new challenges:
-- static `html` → `__challenge__/suite.js` with an explicit failing TODO check so a
-  fresh scaffold never silently passes.
-- `vue`/`vue-sass` → `__challenge__/suite.ts`, `ctx.mount`-compatible (Vue Test Utils).
+The `content` CLI (`packages/create-content`) scaffolds challenge lessons **bank-first**:
+it prompts for a bank id (defaults to the lesson slug), writes
+`validation: { challenge: '<bank-id>' }` into the lesson meta, and creates
+`challenges/<bank-id>/` once — a typed `suite.ts` (bare `harness` import, an explicit
+failing TODO check so a fresh bank never passes an empty suite) plus `en.yaml` /
+`es_mx.yaml` stubs. The bank is idempotent, so creating the mirror lesson in a second
+locale reuses it. See `docs/challenge-banking.md` -> "Scaffolding with the CLI".
 
 ### Debugging the challenge flow
 
@@ -554,15 +562,15 @@ xterm terminal panel via the `amoxtli:vite-diag` custom event.
 
 Diagnostics gated behind this flag:
 
-| Probe | Source | What it checks |
-|-------|--------|----------------|
-| `logViteDiagnostics` | `playground.ts` | Vite version + chunk.js shape in node_modules |
-| `logViteBinHead` | `playground.ts` | First 5 lines of `vite/bin/vite.js` (patched?) |
-| `logModuleDiagnostics` | `playground.ts` | `node:module` shim — `createRequire` presence |
-| `logModuleDiagnostics2` | `playground.ts` | `require('vite')` success + `createServer` type |
-| `logHmrBridgeDiagnostics` | `playground.ts` | **Probe 2**: `createServer` wrapped by almostnode? **Probe 3**: ws shim `_setupHmrBridge` present? |
-| `logBroadcastChannelProbe` | `playground.ts` | BroadcastChannel('vite-hmr-bridge') reachable from parent? |
-| `checkHmrBridge` | `PanelPreviewClient.client.vue` | **Probe 1**: Fetched `@vite/client` contains HMR bridge shim? |
+| Probe                      | Source                          | What it checks                                                                                     |
+| -------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `logViteDiagnostics`       | `playground.ts`                 | Vite version + chunk.js shape in node_modules                                                      |
+| `logViteBinHead`           | `playground.ts`                 | First 5 lines of `vite/bin/vite.js` (patched?)                                                     |
+| `logModuleDiagnostics`     | `playground.ts`                 | `node:module` shim — `createRequire` presence                                                      |
+| `logModuleDiagnostics2`    | `playground.ts`                 | `require('vite')` success + `createServer` type                                                    |
+| `logHmrBridgeDiagnostics`  | `playground.ts`                 | **Probe 2**: `createServer` wrapped by almostnode? **Probe 3**: ws shim `_setupHmrBridge` present? |
+| `logBroadcastChannelProbe` | `playground.ts`                 | BroadcastChannel('vite-hmr-bridge') reachable from parent?                                         |
+| `checkHmrBridge`           | `PanelPreviewClient.client.vue` | **Probe 1**: Fetched `@vite/client` contains HMR bridge shim?                                      |
 
 To run all probes manually: `window.__viteDiag()` (only registered when debug is on).
 

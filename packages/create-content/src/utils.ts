@@ -2,8 +2,12 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync
 import { dirname, join } from 'node:path'
 import process from 'node:process'
 
-export function getRoot(): string { return process.cwd() }
-export function getContentDir(): string { return join(getRoot(), 'content') }
+export function getRoot(): string {
+  return process.cwd()
+}
+export function getContentDir(): string {
+  return join(getRoot(), 'content')
+}
 export const LOCALES = ['en', 'es_mx'] as const
 export type Locale = (typeof LOCALES)[number]
 
@@ -225,11 +229,14 @@ isChallenge: true
 }
 
 /**
- * GuideMeta scaffold for a checkable challenge lesson. The lesson author is
- * expected to fill in their own `__challenge__/suite.ts` guards that match the
- * buggy starter files they write (see `writeChallengeSuite`).
+ * GuideMeta scaffold for a checkable challenge lesson. The lesson references
+ * a shared bank by id (`challenges/<bankId>/`); the mounted `__challenge__/`
+ * suite file is generated at build time from that bank (see
+ * `lib/challenge-banking.ts`). The suite module path is derived from the
+ * lesson's `template` at runtime (see `getChallengeSuiteFile`), so the meta
+ * only carries the bank id.
  */
-export function generateChallengeIndexTs(template: string, sessionName: string): string {
+export function generateChallengeIndexTs(template: string, sessionName: string, bankId: string): string {
   // Static HTML challenges are authored in JavaScript (`suite.js`) because the
   // browser cannot natively import TypeScript without a build step; Vue
   // challenges stay TypeScript (`suite.ts`) since they run under Vite.
@@ -259,72 +266,70 @@ export function generateChallengeIndexTs(template: string, sessionName: string):
 export const meta: GuideMeta = {
 ${templateField}  sessionName: '${sessionName}',
   validation: {
-    file: '/__challenge__/suite.${isHtml ? 'js' : 'ts'}',
+    challenge: '${bankId}',
   },
 }
 `
 }
 
 /**
- * Skeleton for a challenge's `__challenge__/suite.*`. The author fills in the
- * checks — they may use `ctx.doc` (live document) and, for Vue templates,
- * `ctx.mount` (Vue Test Utils).
- *
- * Static HTML challenges are authored in JavaScript (`suite.js`) because the
- * browser cannot natively import TypeScript without a build step; Vue
- * challenges stay TypeScript (`.suite.ts`) since they run under Vite. The HTML
- * skeleton ships an explicit TODO-failing check so a fresh challenge never
- * silently passes an empty suite.
+ * Scaffolds a challenge bank (`challenges/<bankId>/`) idempotently — created
+ * once per challenge, reused by every locale's mirror lesson. Writes a typed
+ * `suite.ts` (bare `harness` import, an explicit failing TODO check so a fresh
+ * bank never passes an empty suite) plus the `en.yaml` / `es_mx.yaml` strings
+ * keyed by the TODO check id.
  */
-export function writeChallengeSuite(dir: string, template = 'html'): void {
-  const isHtml = template === 'html'
-  const ext = isHtml ? 'js' : 'ts'
-  const file = join(dir, '.template', 'files', '__challenge__', `suite.${ext}`)
+export function writeChallengeSuite(bankId: string): void {
+  const dir = join(getRoot(), 'challenges', bankId)
+  const suiteFile = join(dir, 'suite.ts')
+  if (existsSync(suiteFile))
+    return
 
-  const content = isHtml
-    ? `import { check, checks, expect } from './harness.js'
+  mkdirSync(dir, { recursive: true })
+
+  const suite = `import { check, checks, expect } from 'harness'
 
 export default checks([
-// Replace the TODO below with your checks. Use ctx.doc to inspect the live
-// document (no Vue Test Utils for static HTML). Example:
+// Replace the TODO below with your checks.
 //
-// check('Shows a greeting', {
-//   run({ doc }) {
-//     expect(doc.querySelector('h1')?.textContent).toContain('Hello')
-//   },
-// }),
+// Assert against the live document with ctx.doc (all templates):
+//   check('shows-greeting', {
+//     run({ doc }) {
+//       expect(doc.querySelector('h1')?.textContent).toContain('Hello')
+//     },
+//   })
+//
+// Vue templates can mount the learner's component (ctx.mount) and inspect the
+// learner's source via ?raw:
+//   import App from '../src/App.vue'
+//   import AppSource from '../src/App.vue?raw'
+//   check('uses-v-if', {
+//     run() {
+//       expect(AppSource).toMatch(/v-if\\s=/)
+//     },
+//   })
+//
+// Check ids key the localized name/hint in <locale>.yaml — keep them in sync.
 
 // Explicit failing check so this empty scaffold never passes the suite.
-check('TODO: write a real check', {
+check('todo-write-a-real-check', {
   run({ doc }) {
     expect(doc.querySelector('h1')?.textContent).toBeTruthy()
   },
 }),
 ])
 `
-    : `import { check, checks, expect } from './harness'
 
-export default checks([
-// Replace the TODO below with your checks. Use ctx.doc to inspect the live
-// DOM and ctx.mount to mount Vue components with Vue Test Utils. Example:
-//
-// check('Shows a greeting', {
-//   run({ doc, mount }) {
-//     expect(doc.querySelector('h1')?.textContent).toContain('Hello')
-//   },
-// }),
-
-// Explicit failing check so this empty scaffold never passes the suite.
-check('TODO: write a real check', {
-  run({ doc }) {
-    expect(doc.querySelector('h1')?.textContent).toBeTruthy()
-  },
-}),
-])
+  const strings = (name: string, hint: string): string => `${bankId}:
+  checks:
+    todo-write-a-real-check:
+      name: ${name}
+      hint: ${hint}
 `
 
-  mkdirSync(dirname(file), { recursive: true })
-  writeFileSync(file, content)
+  writeFileSync(suiteFile, suite)
+  writeFileSync(join(dir, 'en.yaml'), strings('TODO: write a real check', 'Replace the stub check with real assertions'))
+  writeFileSync(join(dir, 'es_mx.yaml'), strings('TODO: escribe un check real', 'Reemplaza el check de ejemplo con aserciones reales'))
 }
 
 export function hasTemplateDir(lessonPath: string): boolean {

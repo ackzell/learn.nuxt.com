@@ -408,14 +408,14 @@ export default defineNuxtConfig({
       //  - If the author already placed `::challenge-check` in the body,
       //    that manual placement wins and we skip injection.
       //  - The `ChallengeCheck` component itself self-guards on the current
-      //    guide's `validation.file`, so a loose detection here (a challenge
-      //    with no suite yet) simply renders nothing.
+      //    guide's `validation`, so a loose detection here (a challenge with
+      //    no suite yet) simply renders nothing.
       const hasManualCheck = /^::challenge-check/m.test(file.body)
       if (!hasManualCheck && existsSync(templateDir)) {
         const indexTsPath = join(file.dirname, '.template', 'index.ts')
         if (existsSync(indexTsPath)) {
           const src = readFileSync(indexTsPath, 'utf-8')
-          const hasValidationSuite = /\bvalidation\s*:\s*\{[\s\S]*?\bfile\s*:/.test(src)
+          const hasValidationSuite = /\bvalidation\s*:\s*\{/.test(src)
           if (hasValidationSuite) {
             file.body = `${file.body.trimEnd()}\n\n::challenge-check\n`
           }
