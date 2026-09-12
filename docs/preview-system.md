@@ -437,7 +437,7 @@ either or both as needed.
 ## Quizzes
 
 Quizzes are **static-knowledge assessments** (multiple-choice + true/false), authored
-in a shared **quiz bank** and rendered by the `::quiz` MDC block. Unlike challenges,
+in a shared **quiz bank** and rendered by the `:quiz` MDC block. Unlike challenges,
 quizzes never boot a WebContainer — there is no harness, no iframe, and no postMessage
 protocol. They are fully client-side.
 
@@ -497,17 +497,17 @@ basics-reactivity:
 
 ### Referencing a quiz in a lesson
 
-Use the MDC block anywhere in a lesson's markdown:
+Use the MDC inline component anywhere in a lesson's markdown:
 
 ```md
-::quiz{id="basics-reactivity"}
+:quiz{id="basics-reactivity"}
 ```
 
 - The quiz resolves for the **active locale**; a locale without strings falls back to
   `en`, and missing option labels fall back to the option id.
 - Progress is recorded per page: the block's `sessionName` defaults to the normalized
   lesson path (numeric prefixes stripped), overridable per block:
-  `::quiz{id="ref-unwrapping" sessionName="refs"}`.
+  `:quiz{id="ref-unwrapping" sessionName="refs"}`.
 - **Reusable:** the same id may appear in multiple lessons (e.g. a mid-lesson
   checkpoint + a chapter review).
 - A standalone quiz lesson is a docs-only lesson (`defaultLayout: 'docs'`) with a
@@ -520,7 +520,7 @@ Use the MDC block anywhere in a lesson's markdown:
   exposes `{ id → { structure, strings } }` as a build-time payload (SSR-safe).
 - `composables/useQuiz.ts` resolves a quiz for the active locale
   (`useQuiz(id) → useAsyncData`) and exposes pure `gradeQuiz()` readers.
-- `components/content/Quiz.vue` (`::quiz`) renders the questions, grades a submission,
+- `components/content/Quiz.vue` (`:quiz`) renders the questions, grades a submission,
   and renders strings through the **MDC runtime** (`MDC` component, auto-registered by
   `@nuxtjs/mdc`).
 

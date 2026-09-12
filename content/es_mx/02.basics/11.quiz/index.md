@@ -7,4 +7,4 @@ ogImage: true
 
 Llegaste al final del capítulo de fundamentos. Veamos qué se te quedó. Responde las preguntas de abajo — puedes volver a intentarlo las veces que quieras.
 
-::quiz{id="basics-reactivity"}
+:quiz{id="basics-reactivity"}

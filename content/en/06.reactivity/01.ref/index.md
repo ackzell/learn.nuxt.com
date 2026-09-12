@@ -178,4 +178,4 @@ In the [words of the docs](https://vuejs.org/guide/essentials/reactivity-fundame
 
 Let's make sure the key takeaways are clear:
 
-::quiz{id="ref-unwrapping"}
+:quiz{id="ref-unwrapping"}

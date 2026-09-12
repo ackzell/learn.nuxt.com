@@ -291,7 +291,7 @@ function retake() {
           {{ $t('quiz.passed') }}
         </span>
         <span data-testid="quiz-best-score" op70>
-          {{ $t('quiz.score', { score: progress.bestScore(sessionName.value) ?? 0, total: 100 }) }}
+          {{ $t('quiz.score', { score: progress.bestScore(sessionName) ?? 0, total: 100 }) }}
         </span>
       </div>
       <button
