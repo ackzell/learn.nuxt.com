@@ -22,6 +22,7 @@ import {
   hasTemplateDir,
   padNumber,
   parseDirNumber,
+  parseOptionLines,
   slugify,
   writeChallengeSuite,
 } from '../src/utils.ts'
@@ -64,7 +65,11 @@ describe('padNumber', () => {
 
 describe('parseDirNumber', () => {
   it('parses numbered directory', () => {
-    expect(parseDirNumber('01.intro')).toEqual({ num: 1, rest: 'intro' })
+    expect(parseDirNumber('01.intro')).toEqual({ num: 1, suffix: '', rest: 'intro' })
+  })
+
+  it('parses letter-suffixed directory', () => {
+    expect(parseDirNumber('02a.inserted')).toEqual({ num: 2, suffix: 'a', rest: 'inserted' })
   })
 
   it('returns null for unnumbered directory', () => {
@@ -73,6 +78,62 @@ describe('parseDirNumber', () => {
 
   it('returns null for invalid format', () => {
     expect(parseDirNumber('01')).toBeNull()
+    expect(parseDirNumber('01a')).toBeNull()
+  })
+})
+
+describe('parseOptionLines', () => {
+  it('auto-slugs ids from plain labels', () => {
+    expect(parseOptionLines('A component\nA plain string')).toEqual([
+      { id: 'a-component', label: 'A component' },
+      { id: 'a-plain-string', label: 'A plain string' },
+    ])
+  })
+
+  it('honors explicit `id: label` lines', () => {
+    expect(parseOptionLines('double-braces: `{{ value }}`\n`{ value }`')).toEqual([
+      { id: 'double-braces', label: '`{{ value }}`' },
+      { id: 'value', label: '`{ value }`' },
+    ])
+  })
+
+  it('falls back to option-N for labels without sluggable characters', () => {
+    expect(parseOptionLines('😀\n💻')).toEqual([
+      { id: 'option-1', label: '😀' },
+      { id: 'option-2', label: '💻' },
+    ])
+  })
+
+  it('deduplicates auto-slugged ids from backticked snippets', () => {
+    expect(parseOptionLines('`{{ value }}`\n`[ value ]`')).toEqual([
+      { id: 'value', label: '`{{ value }}`' },
+      { id: 'value-2', label: '`[ value ]`' },
+    ])
+  })
+
+  it('de-duplicates colliding ids with a -N suffix', () => {
+    expect(parseOptionLines('Option A\nOption A\noption-a: literal')).toEqual([
+      { id: 'option-a', label: 'Option A' },
+      { id: 'option-a-2', label: 'Option A' },
+      { id: 'option-a-3', label: 'literal' },
+    ])
+  })
+
+  it('ignores blank lines', () => {
+    expect(parseOptionLines('one\n  \ntwo\n')).toEqual([
+      { id: 'one', label: 'one' },
+      { id: 'two', label: 'two' },
+    ])
+  })
+
+  it('returns an empty array for empty input', () => {
+    expect(parseOptionLines('')).toEqual([])
+  })
+
+  it('treats capitalized labels without a leading id as plain labels', () => {
+    expect(parseOptionLines('True or false: something')).toEqual([
+      { id: 'true-or-false-something', label: 'True or false: something' },
+    ])
   })
 })
 
@@ -263,6 +324,21 @@ describe('filesystem operations', () => {
       expect(lessons).toHaveLength(2)
       expect(lessons[0].dir).toBe('01.lesson-a')
       expect(lessons[1].dir).toBe('02.lesson-b')
+    })
+
+    it('includes letter-suffixed lessons between their neighbors', () => {
+      const dir = mkdtempSync(join(tmpDir, 'lessons-suffix-'))
+      process.chdir(dir)
+      mkdirSync(join(dir, 'content', 'en', '01.chapter', '03.last'), { recursive: true })
+      mkdirSync(join(dir, 'content', 'en', '01.chapter', '01.first'), { recursive: true })
+      mkdirSync(join(dir, 'content', 'en', '01.chapter', '02a.inserted'), { recursive: true })
+      const lessons = getLessons('en', '01.chapter')
+      expect(lessons).toHaveLength(3)
+      expect(lessons[0].dir).toBe('01.first')
+      expect(lessons[1].dir).toBe('02a.inserted')
+      expect(lessons[1].num).toBe(2)
+      expect(lessons[1].suffix).toBe('a')
+      expect(lessons[2].dir).toBe('03.last')
     })
   })
 

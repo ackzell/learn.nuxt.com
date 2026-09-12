@@ -96,21 +96,24 @@ export async function createLesson(options?: LessonOptions) {
     return
 
   const numStr = await text({
-    message: 'Lesson number:',
+    message: 'Lesson number (optional letter suffix inserts between existing, e.g. 2a):',
     initialValue: String(nextNum),
     validate: (v) => {
-      const n = Number(v)
-      if (!Number.isInteger(n) || n < 0)
-        return 'Must be a positive integer'
-      if (lessons.some(l => l.num === n))
-        return `Lesson ${padNumber(n)} already exists`
+      const value = v?.trim() ?? ''
+      const m = value.match(/^(\d{1,2})([a-z]?)$/)
+      if (!m)
+        return 'A number, optionally with a letter suffix (e.g. 4, 2a, 12b)'
+      const token = padNumber(Number(m[1]!)) + (m[2] ?? '')
+      if (lessons.some(l => padNumber(l.num) + l.suffix === token))
+        return `Lesson "${token}" already exists`
     },
   })
 
   if (isCancel(numStr))
     return
 
-  const num = Number(numStr)
+  const num = Number(numStr.match(/\d+/)![0])
+  const suffix = numStr.trim().match(/[a-z]$/)?.[0] ?? ''
 
   const template = options?.template ?? await select({
     message: 'Template type:',
@@ -128,7 +131,7 @@ export async function createLesson(options?: LessonOptions) {
     return
 
   const slug = slugify(title)
-  const dirName = `${padNumber(num)}.${slug}`
+  const dirName = `${padNumber(num)}${suffix}.${slug}`
   const lessonDir = join(getContentDir(), resolvedLocale, chapter, dirName)
   const sessionName = slug
 

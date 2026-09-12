@@ -79,7 +79,7 @@ async function initializeFiles(lessonPath: string) {
   const templateDir = join(lessonPath, '.template')
   mkdirSync(templateDir, { recursive: true })
 
-  const slug = lessonPath.split('/').pop()?.replace(/^\d{2}\./, '') ?? 'lesson'
+  const slug = lessonPath.split('/').pop()?.replace(/^\d{2}[a-z]?\./, '') ?? 'lesson'
   writeFileSync(join(templateDir, 'index.ts'), generateIndexTs(template, slug))
 
   if (template !== 'none') {

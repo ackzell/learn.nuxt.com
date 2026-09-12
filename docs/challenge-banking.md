@@ -246,15 +246,26 @@ button, suite bridge, validation outcomes, IndexedDB writes). Full probe list:
 
 ## Scaffolding with the CLI
 
-The `content` CLI (`packages/create-content`) scaffolds challenge lessons
-bank-first:
+The `content` CLI (`packages/create-content`) supports two entry points:
+
+### `content challenge` (bank-first, recommended)
+
+```bash
+content challenge   # prompted: challenge id, template, checks (name + hint)
+```
+
+Scaffolds the bank first (`challenges/<id>/suite.ts` + `en.yaml`), then
+optionally calls `content lesson` with the bank id already wired. Every
+generated check has a stubbed, always-failing body so a fresh bank never
+accidentally passes — fill in the `run()` implementation as you author.
+
+### `content lesson` (lesson-first, also works)
 
 ```bash
 content lesson      # answer "Make this a checkable challenge?" → yes
 ```
 
-It prompts for a **bank id** (defaults to the lesson slug) and then:
-
+Prompts for a **bank id** (defaults to the lesson slug) and then:
 - writes `validation: { challenge: '<bank-id>' }` into the lesson's
   `.template/index.ts` (the suite path itself is never authored);
 - creates `challenges/<bank-id>/` once: `suite.ts` (bare `harness` import, an
@@ -262,5 +273,7 @@ It prompts for a **bank id** (defaults to the lesson slug) and then:
   plus `en.yaml` / `es_mx.yaml` stubs keyed by the TODO check id;
 - scaffolds `.template/files/` starters and `.template/solutions/`.
 
-The bank is written idempotently — creating the mirror lesson in a second
-locale reuses the existing bank.
+### Idempotency
+
+Both flows write the bank idempotently — creating the mirror lesson in a
+second locale reuses the existing bank.

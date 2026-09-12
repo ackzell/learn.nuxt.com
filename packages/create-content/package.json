@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@clack/prompts": "catalog:",
+    "js-yaml": "catalog:",
     "kolorist": "catalog:",
     "pathe": "catalog:conflicts_frontend_h2_0_0"
   },
