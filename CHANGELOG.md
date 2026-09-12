@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.3.0](https://github.com/ackzell/amoxtli-vue-2/compare/v0.2.5...v0.3.0) (2026-09-12)
+
+
+### Features
+
+* add first challenge validation support ([129fed0](https://github.com/ackzell/amoxtli-vue-2/commit/129fed0fa8a8c798eb649717d321825ce61a43a3))
+* **challenge:** centralized challenge banking with localized suites ([06f0056](https://github.com/ackzell/amoxtli-vue-2/commit/06f00568cc7120e1e03a735e39a51370247a85eb))
+* **challenge:** retake flow, non-destructive solution peek, persist passing files ([a3c0f6b](https://github.com/ackzell/amoxtli-vue-2/commit/a3c0f6b103562aef2026f74a809da951009e5825))
+* **cli:** quiz and challenge authoring wizards with letter-suffix lessons ([5c85f7d](https://github.com/ackzell/amoxtli-vue-2/commit/5c85f7d02a1dd40800523eefb3c5022b06daf24e))
+* **content:** realign es_mx chapters with en 05-07 (interactivity, reactivity, styling) ([f0720ad](https://github.com/ackzell/amoxtli-vue-2/commit/f0720ad08e5a48673c3cae6b4aa126ede9efccaf))
+* per-pattern cycling colors and per-annotation hover for code highlights ([992073d](https://github.com/ackzell/amoxtli-vue-2/commit/992073dc1cf1bdef369de901d7535dc747cdf5e4))
+* **quiz:** add interactive quiz blocks with grading and progress tracking ([defa472](https://github.com/ackzell/amoxtli-vue-2/commit/defa472f1e59a9cfadcd9e80148a69928c1c1a97))
+
+
+### Bug Fixes
+
+* **preview:** apply challenge + dark params once iframe is available ([ed2c1be](https://github.com/ackzell/amoxtli-vue-2/commit/ed2c1be3dab306b480c3b3abdaf5f31c6fb164b7))
+* **templates:** lazy-load challenge harness and pre-bundle vitest deps to fix vue hmr ([a3e692c](https://github.com/ackzell/amoxtli-vue-2/commit/a3e692c2372ddbe3e38f54a731e8300196f9534b))
+* **tooltip:** force persisted twoslash tooltips below their trigger ([ffe2868](https://github.com/ackzell/amoxtli-vue-2/commit/ffe28682c83d3ce8536305e6914d9a1e7ccd3c41))
+* **ui:** switching between docs and code view made a jarring transition ([c309693](https://github.com/ackzell/amoxtli-vue-2/commit/c309693a0eb90ec70cf461339cbc834fe1e3e214))
+* **ui:** updating the challenge styles, re-ordering the elements in the verification ([45f733a](https://github.com/ackzell/amoxtli-vue-2/commit/45f733ad5b2415f2b55a9db303863a15719f94df))
+
 ## [0.2.5](https://github.com/ackzell/amoxtli-vue-2/compare/v0.2.4...v0.2.5) (2026-08-21)
 
 ## [0.2.4](https://github.com/ackzell/amoxtli-vue-2/compare/v0.2.3...v0.2.4) (2026-08-21)
