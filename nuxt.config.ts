@@ -1,10 +1,30 @@
+import type { Logger, Plugin } from 'vite'
 import { Buffer } from 'node:buffer'
 import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+
 import process from 'node:process'
 import { execaSync } from 'execa'
 
 import amoxtliLight from './themes/amoxtli-light'
+
+// Some CJS deps in the MDC/twoslash chain (@vue/language-core, typescript) ship
+// a `//# sourceMappingURL=` comment without publishing the referenced `.map`
+// file. Vite's dev transform tries to read it, fails, and logs a harmless but
+// noisy WARN on every boot. Drop exactly that message.
+function silenceMissingSourcemap(): Plugin {
+  return {
+    name: 'amoxtli:silence-missing-sourcemap',
+    configResolved(config) {
+      const { logger } = config
+      const warn = logger.warn.bind(logger)
+      logger.warn = ((msg, options) =>
+        typeof msg === 'string' && msg.startsWith('Failed to load source map for')
+          ? undefined
+          : warn(msg, options)) as Logger['warn']
+    },
+  }
+}
 
 export default defineNuxtConfig({
   modules: [
@@ -142,6 +162,7 @@ export default defineNuxtConfig({
       minify: 'esbuild',
       cssMinify: 'esbuild',
     },
+    plugins: [silenceMissingSourcemap()],
     server: {
       headers: {
         'Cross-Origin-Embedder-Policy': 'require-corp',
@@ -196,6 +217,14 @@ export default defineNuxtConfig({
     tsConfig: {
       include: [
         '../content/**/.template/**/*.ts',
+      ],
+      // Challenge bank suites are typed/checked against challenges/tsconfig.json
+      // (bare "harness" authoring module), not the Nuxt app graph. Nuxt merges
+      // this into the generated .nuxt/tsconfig.json exclude list. Setting it in
+      // the root tsconfig instead would REPLACE the generated list entirely
+      // (which is what pulled node_modules back into the program).
+      exclude: [
+        '../challenges',
       ],
     },
   },
